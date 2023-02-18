@@ -1,1 +1,97 @@
+MODULE      MuxDemo
+TITLE      'Bus-based Multiplexer Demo'
 
+
+" Description:  This file demonstrates a bus-based multiplexer.  It also shows
+"               how to handle constants when working with vectors/sets/busses.
+"
+" Inputs:       MuxInA[7..0]  - one 8-bit multiplexer input
+"               MuxInB[7..0]  - second 8-bit multiplexer input
+"               MuxInC[7..0]  - third 8-bit multiplexer input
+"               Sel1          - high bit of select input
+"               Sel0          - low bit of select input
+"
+" Outputs:      Mux1Out[7..0] - output of first demo multiplexer
+"               Mux2Out[7..0] - output of second demo multiplexer
+
+
+" Revision History:
+" 02/05/17   Glen George  Initial Revision
+" 02/19/20   Glen George  Updated comments
+" 02/18/21   Glen George  Updated comments
+
+
+
+" Pin/Signal Declarations
+
+" Inputs
+
+MuxInA7..MuxInA0        pin;    "input  first 8-bit input to mux
+MuxInB7..MuxInB0        pin;    "input  second 8-bit input to mux
+MuxInC7..MuxInC0        pin;    "input  third 8-bit input to mux
+Sel1                    pin;    "input  high bit of mux select
+Sel0                    pin;    "input  low bit of mux select
+
+
+" Outputs
+
+Mux1Out7..Mux1Out0      pin;    "output  the 8-bit output of first mux
+Mux2Out7..Mux2Out0      pin;    "output  the 8-bit output of second mux
+
+
+" Busses/Vectors
+
+Mux1Out  =  [Mux1Out7..Mux1Out0];       " multiplexer output 1
+Mux2Out  =  [Mux2Out7..Mux2Out0];       " multiplexer output 2
+MuxInA   =  [MuxInA7..MuxInA0];         " input A to mux 1
+MuxInB   =  [MuxInB7..MuxInB0];         " input B to mux 1
+MuxInC   =  [MuxInC7..MuxInC0];         " input C to mux 1
+
+
+" Constants
+
+ONE   =  [ 0, 0, 0, 0, 0, 0, 0, 1 ];    " 8-bit value of 1
+ONES  =  [ 1, 1, 1, 1, 1, 1, 1, 1 ];    " 8-bit value of all 1's
+
+
+
+
+EQUATIONS
+
+
+" a simple 8 x 4:1 mux
+
+Mux1Out  =  (MuxInA & !Sel1 & !Sel0) #          " Sel = 00 -> A
+            (MuxInB & !Sel1 &  Sel0) #          " Sel = 01 -> B
+            (ONE    &  Sel1 & !Sel0) #          " Sel = 10 -> ONE
+            (MuxInC &  Sel1 &  Sel0);           " Sel = 11 -> C
+
+
+" an 8 x 4:1 mux using constants
+
+Mux2Out  =  ((ONES & 3) & !Sel1 & !Sel0) #      " select input 0
+            ((ONES & 2) & !Sel1 &  Sel0) #      " select input 1
+            (1          &  Sel1 & !Sel0) #      " select input 2
+            (0          &  Sel1 &  Sel0);       " select input 3
+
+
+
+
+" Test Vectors
+
+" thoroughly test Mux1Out and demonstrate the output from Mux2
+
+TEST_VECTORS ( [ Sel1, Sel0, MuxInA, MuxInB, MuxInC ] ->
+               [ Mux1Out, Mux2Out ] )
+
+
+[ 0, 0, ^HFF, ^H55, ^HAA ] -> [ ^HFF, ^H03 ];   " select the 0 input
+[ 0, 0, ^H00, ^H55, ^HAA ] -> [ ^H00, ^H03 ];   " make sure it is the 0 input
+[ 0, 1, ^HFF, ^H55, ^HAA ] -> [ ^H55, ^H02 ];   " select input 1
+[ 0, 1, ^HFF, ^H00, ^HAA ] -> [ ^H00, ^H02 ];   " make sure it is input 1
+[ 1, 0, ^HFF, ^H55, ^HAA ] -> [ ^H01, ^HFF ];   " select input 2 (note Mux2)
+[ 1, 1, ^HFF, ^H55, ^HAA ] -> [ ^HAA, ^H00 ];   " select input 3
+[ 1, 1, ^HFF, ^H55, ^H00 ] -> [ ^H00, ^H00 ];   " make sure it is input 3
+
+
+END     MuxDemo
