@@ -1,0 +1,185 @@
+MODULE      deccntr
+TITLE      'Up/Down Decade Counter'
+
+
+" deccntr       DEVICE  'MACH4032'
+
+
+" Description:  This is Kemal Pulungan's code for a 3-Digit Up/Down Decade 
+" 				Counter for EE/CS 10a, Homework #2.
+
+
+" Revision History:
+" 04/17/07   Glen George  Initial Revision
+" 10/13/07   Glen George  Changed CountUp pin to be called CountDown (its
+"                         active high meaning)
+" 10/13/07   Glen George  Updated comments
+" 01/12/18   Glen George  Updated pinout to match new PCB (v2.0)
+" 01/08/20   Glen George  Updated comments
+" 01/04/21   Glen George  Updated comments
+" 01/21/23   Kemal Pulungan 	Added his code and comments
+
+
+
+" Pins
+
+" Inputs
+
+Mode            pin 41;                 "input   Mode (extra credit)
+CountDown       pin 14;                 "input   Up/Down input (high for Down)
+
+
+" Counter Outputs
+
+Q11             pin 31   ISTYPE 'REG';  "output BCD digit 2, bit 3
+Q10             pin 35   ISTYPE 'REG';  "output BCD digit 2, bit 2
+Q9              pin 36   ISTYPE 'REG';  "output BCD digit 2, bit 1
+Q8              pin 37   ISTYPE 'REG';  "output BCD digit 2, bit 0
+Q7              pin 24   ISTYPE 'REG';  "output BCD digit 1, bit 3
+Q6              pin 25   ISTYPE 'REG';  "output BCD digit 1, bit 2
+Q5              pin 26   ISTYPE 'REG';  "output BCD digit 1, bit 1
+Q4              pin 29   ISTYPE 'REG';  "output BCD digit 1, bit 0
+Q3              pin 18   ISTYPE 'REG';  "output BCD digit 0, bit 3
+Q2              pin 19   ISTYPE 'REG';  "output BCD digit 0, bit 2
+Q1              pin 20   ISTYPE 'REG';  "output BCD digit 0, bit 1
+Q0              pin 21   ISTYPE 'REG';  "output BCD digit 0, bit 0
+
+
+" Clock Input
+
+Clock           pin 39;                 "input   clock
+
+
+" Unconnected Pins
+
+"IOA2           pin 42                   input/output
+"IOA3           pin 43                   input/output
+"IOA4           pin 44                   input/output
+"IOA5           pin  2                   input/output
+"IOA6           pin  3                   input/output
+"IOA7           pin  4                   input/output
+"IOA8           pin  7                   input/output
+"IOA9           pin  8                   input/output
+"IOA10          pin  9                   input/output
+"IOA12          pin 13                   input/output
+"IOA14          pin 15                   input/output
+"IOA15          pin 16                   input/output
+"IOB4           pin 22                   input/output
+"IOB9           pin 30                   input/output
+
+"IOGOE0         pin 40                   input/output/output enable
+"IOGOE1         pin 38                   input/output/output enable
+"ICLK2          pin 17                   input/clock
+
+
+" Programming Pins (not available for use in the design)
+
+"TCK            pin 10                   pgm     programming interface TCK
+"TDI            pin  1                   pgm     programming interface TDI
+"TDO            pin 32                   pgm     programming interface TDO
+"TMS            pin 23                   pgm     programming interface TMS
+
+
+" Power Pins
+
+"GND            pin  5                   supply  power ground
+"GND            pin 12                   supply  power ground
+"GND            pin 27                   supply  power ground
+"GND            pin 34                   supply  power ground
+"VCC            pin 11                   supply  power Vcc
+"VCC            pin 33                   supply  power Vcc
+"VCCIO          pin 28                   supply  power Vcc I/O
+"VCCIO          pin  6                   supply  power Vcc I/O
+
+
+" Intermediate Terms
+
+" if you have any intermediate terms in your equations they need to be
+" declared here as:
+" Signal_name   node;
+
+" holds tens digit until it is ready to be incremented/decremented
+CountEn1    node;
+
+" holds hundreds digit until it is ready to be incremented/decremented
+CountEn2    node;
+
+
+" Macros
+
+" if you have any macros (equations which are not pins or nodes, but just a
+" shorthand notation) they need to be defined here as:
+" Macro_name = equation;
+
+
+
+EQUATIONS
+
+
+" clocks for all of the BCD counter bits
+
+Q11.CLK  =  Clock;                      " use the global clock pin
+Q10.CLK  =  Clock;                      " use the global clock pin
+Q9.CLK   =  Clock;                      " use the global clock pin
+Q8.CLK   =  Clock;                      " use the global clock pin
+Q7.CLK   =  Clock;                      " use the global clock pin
+Q6.CLK   =  Clock;                      " use the global clock pin
+Q5.CLK   =  Clock;                      " use the global clock pin
+Q4.CLK   =  Clock;                      " use the global clock pin
+Q3.CLK   =  Clock;                      " use the global clock pin
+Q2.CLK   =  Clock;                      " use the global clock pin
+Q1.CLK   =  Clock;                      " use the global clock pin
+Q0.CLK   =  Clock;                      " use the global clock pin
+
+
+" all of your equations for the BCD counter outputs go here in the form:
+"    Qn := equation;
+
+"ones digit, goes 0 to 9
+Q0 := (!Q1 & !Q0) # (Q1 & !Q0);
+Q1 := (((Q1 & !Q0) # (!Q3 & !Q1 & Q0)) & !CountDown) # 
+	  (((Q1 & Q0) # (Q3 & !Q1 & !Q0) # (Q2 & !Q1 & !Q0)) & CountDown);
+Q2 := (((!Q3 & !Q2 & Q1 & Q0) # (!Q3 & Q2 & Q1 & !Q0) # (Q2 & !Q1)) & 
+	  !CountDown) # (((Q3 & !Q1 & !Q0) # (Q2 & Q1) # (Q2 & Q0)) & CountDown);
+Q3 := (((Q3 & !Q1 & !Q0) # (Q2 & Q1 & Q0)) & !CountDown) # 
+	  (((!Q3 & !Q2 & !Q1 & !Q0) # (Q3 & Q0)) & CountDown);
+
+" also all the intermediate term equations go here as well, typically of
+" the form:
+"    signal_name = equation;
+
+" holds tens digit counting until it is ready to increment/decrement
+CountEn1 = (Q3 & !Q2 & !Q1 & Q0 & !CountDown) # 
+		   (!Q3 & !Q2 & !Q1 & !Q0 & CountDown);
+
+" tens digit, goes 0 to 9
+" value held if counting is not enabled
+Q4 := (CountEn1 & ((!Q5 & !Q4) # (Q5 & !Q4))) # (!CountEn1 & Q4);
+Q5 := (CountEn1 & ((((Q5 & !Q4) # (!Q7 & !Q5 & Q4)) & !CountDown) # 
+	  (((Q5 & Q4) # (Q7 & !Q5 & !Q4) # (Q6 & !Q5 & !Q4)) & CountDown))) # 
+	  (!CountEn1 & Q5);
+Q6 := (CountEn1 & ((((!Q7 & !Q6 & Q5 & Q4) # (!Q7 & Q6 & Q5 & !Q4) # 
+	  (Q6 & !Q5)) & !CountDown) # (((Q7 & !Q5 & !Q4) # (Q6 & Q5) # (Q6 & Q4)) 
+	  & CountDown))) # (!CountEn1 & Q6);
+Q7 := (CountEn1 & ((((Q7 & !Q5 & !Q4) # (Q6 & Q5 & Q4)) & !CountDown) # 
+	  (((!Q7 & !Q6 & !Q5 & !Q4) # (Q7 & Q4)) & CountDown))) # 
+	  (!CountEn1 & Q7);
+
+" holds hundreds digit counting until it is ready to increment/decrement
+CountEn2 = CountEn1 & ((Q7 & !Q6 & !Q5 & Q4 & !CountDown) # 
+		   (!Q7 & !Q6 & !Q5 & !Q4 & CountDown));
+
+" hundreds digit, goes 0 to 0
+" value held if counting is not enabled
+Q8 := (CountEn2 & ((!Q9 & !Q8) # (Q9 & !Q8))) # (!CountEn2 & Q8);
+Q9 := (CountEn2 & ((((Q9 & !Q8) # (!Q11 & !Q9 & Q8)) & !CountDown) # 
+	  (((Q9 & Q9) # (Q11 & !Q9 & !Q8) # (Q10 & !Q9 & !Q8)) & CountDown))) # 
+	  (!CountEn2 & Q9);
+Q10 := (CountEn2 & ((((!Q11 & !Q10 & Q9 & Q8) # (!Q11 & Q10 & Q9 & !Q8) # 
+	   (Q10 & !Q9)) & !CountDown) # (((Q11 & !Q9 & !Q8) # (Q10 & Q9) # 
+	   (Q10 & Q8)) & CountDown))) # (!CountEn2 & Q10);
+Q11 := (CountEn2 & ((((Q11 & !Q9 & !Q8) # (Q10 & Q9 & Q8)) & !CountDown) # 
+	   (((!Q11 & !Q10 & !Q9 & !Q8) # (Q11 & Q8)) & CountDown))) # 
+	   (!CountEn2 & Q11);
+
+END  deccntr
