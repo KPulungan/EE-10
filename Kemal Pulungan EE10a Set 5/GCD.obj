@@ -1,0 +1,62 @@
+;This is the GCD algorithm for the Caltech10 Microprocessor
+;It finds greatest common divisor between two numbers
+;Using the Euler's Algorithm, subtraction version, which goes as follows:
+;   Begin with two numbers: a, b
+;   REPEAT
+;       WHILE (a >= b)
+;           a = a - b
+;       SWAP a with b
+;   UNTIL (b == 0)
+;   the GCD will be the final value of a
+;a and b are 8-bit values. k is destroyed after the end of the program, 
+; as it is only an intermediate value
+
+
+;Revision History
+;   2023-02-11   Kemal Pulungan     uploaded code for GCD
+
+
+;variables
+;01  ??  var1    DB    ?	    ;first number to find GCD with
+;02  ??  var2    DB    ?		;second number to find GCD with
+
+
+;0000   start:
+0000  8001;     LDD	  var1		;loads var1, first number to find GCD with
+0001  3300;     CMPI  0			;returns 0 flag
+0002  9F09;     JZ    Swap	;if var1 is 0, immediately jumps to swap var1 and var2
+0003  1F80;     NOP				;proceeds to Loop if var1 != 0
+
+
+;0004       Loop:
+
+;beginning of WHILE loop
+0004  8001;      LDD   var1     ;loads var1 to accumulator
+0005  1002;      SUB   var2     ;value in var1 - value in var2
+0006  B804;      JL    swap		;jumps to swap
+0007  1F80;      NOP            ;continues if no jump
+0008  A001;      STD   var1		;sets var1 = var1 - var2
+0009  C004;      JMP   Loop     ;goes back to beginning of while loop if var1 >= var2
+000A  1F80;      NOP
+
+
+;000B       swap
+;below is the code to swap var1 with var2
+000B  8001;     LDD   var1		;get var1
+000C  0780;     TAX			;and put it in X temporarily
+000D  8002;     LDD   var2		;now get var2
+000E  A001;     STD   var1		;and store it in var1
+000F  6701;     TXA			;get original var1 back
+0010  A002;     STD   var2		;and store it in var2
+
+;below checks if var2 == 0 so the loop can be broken
+0011  8002;     LDD   var2		;loads var2 to accumulator to check if it's 0 yet
+0012  3300;     CMPI  0         ;checks if var2 == 0
+0013  9CF1;     JNZ   Loop      ;jumps back to beginning of loop if var2 != 0
+;JZ   Finish
+0014  1F80;     NOP             ;proceeds if var2 == 0
+
+
+;0015   Finish:
+0015  8001;     LDD var1		;retrieves value of var1, the GCD, once computations are done
+0016  1F00;     RTS				;returns value in accumulator (var1) that is the GCD
