@@ -84,5 +84,9 @@ Mux1Out  =  (IncrPCMuxIn & !Sel2 & !Sel1 & !Sel0) #     " Sel = 000 -> PC increm
             (Low8MuxIn & Sel2 & !Sel1 & Sel0);           	" Sel = 101 -> F
 
 
+" adder
+
+" TODO 2023-02-18 01:35: REFER TO SET 4 ADDER
+
 
 END     ProgramAddressUnit
