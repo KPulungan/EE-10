@@ -65,7 +65,8 @@ Mux1Out  =  [Mux1Out12..Mux1Out0];       " multiplexer output
 IncrPCMuxIn   =  ONE;         " input PC increment to mux
 HoldPCMuxIn   =  ZERO;         " input PC hold to mux
 DirectJMPMuxIn   =   [DirectJMPMuxIn12..DirectJMPMuxIn0];     " input PC direct jump to mux
-OffsetMuxIn   =   [ 0, 0, 0, 0, 0, OffsetMuxIn7..OffsetMuxIn0];     " input PC offset jump to mux
+OffsetMuxIn   =   [ OffsetMuxIn7, OffsetMuxIn7, OffsetMuxIn7, OffsetMuxIn7, 
+                    OffsetMuxIn7, OffsetMuxIn7..OffsetMuxIn0];     " input PC offset jump to mux
 High5MuxIn   =  [High5MuxIn4..High5MuxIn0, 0, 0, 0, 0, 0, 0, 0, 0]; " input loading highest 5 bits to mux
 Low8MuxIn   =  [ 0, 0, 0, 0, 0, Low8MuxIn7..Low8MuxIn0];         " input loading lowest 8 bits to mux
 
