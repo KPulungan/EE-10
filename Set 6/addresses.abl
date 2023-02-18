@@ -29,8 +29,9 @@ TITLE      'Bus-based Multiplexer Demo'
 MuxInA7..MuxInA0        pin;    "input  first 8-bit input to mux
 MuxInB7..MuxInB0        pin;    "input  second 8-bit input to mux
 MuxInC7..MuxInC0        pin;    "input  third 8-bit input to mux
-Sel1                    pin;    "input  high bit of mux select
-Sel0                    pin;    "input  low bit of mux select
+Sel2                    pin;    "input  highest bit of mux select
+Sel1                    pin;    "input  2nd bit of mux select
+Sel0                    pin;    "input  lowest bit of mux select
 
 
 " Outputs
@@ -46,6 +47,7 @@ Mux2Out  =  [Mux2Out7..Mux2Out0];       " multiplexer output 2
 MuxInA   =  [MuxInA7..MuxInA0];         " input A to mux 1
 MuxInB   =  [MuxInB7..MuxInB0];         " input B to mux 1
 MuxInC   =  [MuxInC7..MuxInC0];         " input C to mux 1
+MuxInD   =  [MuxInD7..MuxInD0];         " input C to mux 1
 
 
 " Constants
