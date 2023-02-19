@@ -1,4 +1,4 @@
-MODULE      ProgramAddressUnit
+MODULE      ProgramAccess
 TITLE      'Program Memory Address Unit'
 
 
@@ -6,30 +6,29 @@ TITLE      'Program Memory Address Unit'
 "								This is Kemal Pulungan's submission for EE10a Set 6
 "
 " Inputs:       IncrPCMuxIn[12..0]  - 13-bit multiplexer input for incrementing the PC +1.
-"																			Set to constant of 1
+"									  Set to constant of 1
 "               HoldPCMuxIn[12..0]  - 13-bit multiplexer input for holding the current PC
-"																			Set to constant of 0
+"									  Set to constant of 0
 "               DirectJMPMuxIn[12..0]  - 13-bit multiplexer input for directly 
-"																				jumping to an address in the program
+"									   jumping to an address in the program
 "               OffsetMuxIn[7..0]  - 8-bit input for adding an offset to the current
-"																		 PC value to jump to. To be converted to 13 bits
-"               High5MuxIn[4..0]  - 5-bit input for loading highest 5 bits. For
-"																		concatenating eight zeroes afterwards for mux input
-"               Low8MuxIn[7..0]  - 8-bit input for loading lowest 8 bits. For 
-"																		concatenating five zeroes before it for mux input
-"				Sel2		  - highest bit of select input
+"									 PC value to jump to. To be converted to 13 bits
+"				PC						- 13-bit program counter
+"				Sel2		  		- highest bit of select input
 "               Sel1          - second bit of select input
 "               Sel0          - low bit of select input
 "               Load          - tells whether to load (low for enable, high for disable)
+"				Reset					- resets values
+"				Clock					- cycles clock
 "
 " Outputs:      Mux1Out[12..0] - output of multiplexer
+"				AdderOut[12..0] - output of adder
+"				Carry[13..0]		- carry for each bit
 
 
 " Revision History:
-" 02/05/17   Glen George  Initial Revision
-" 02/19/20   Glen George  Updated comments
-" 02/18/21   Glen George  Updated comments
-" 02/17/23	 Kemal Pulungan  Added Code
+" 02/17/23	 Kemal Pulungan  Added code about multiplexer
+" 02/18/23	 Kemal Pulungan	 Added adder code
 
 
 
@@ -37,20 +36,20 @@ TITLE      'Program Memory Address Unit'
 
 " Inputs
 
-IncrPCMuxIn12..IncrPCMuxIn0        			pin;    "input for incrementing the PC +1 to mux
-HoldPCMuxIn12..HoldPCMuxIn0        			pin;    "input for holding the current PC to mux
 DirectJMPMuxIn12..DirectJMPMuxIn0       pin;    "input for PC directly jumping to value to mux
 OffsetMuxIn7..OffsetMuxIn0							pin;		"input for PC offset for jumping to mux
-High5MuxIn4..High5MuxIn0        				pin;    "input for loading highest 5 bits
-Low8MuxIn7..Low8MuxIn0        					pin;    "input for loading lowest 8 bits
+PC12..PC0								pin;		"program counter
 Sel2                    pin;    "input  highest bit of mux select
 Sel1                    pin;    "input  2nd bit of mux select
 Sel0                    pin;    "input  lowest bit of mux select
 Load                    pin;    "tells whether to load PC value to adder or not
+Reset										pin;		"input system reset
+Clock										pin;		"input system clock
 
 " Outputs
 
 Mux1Out12..Mux1Out0      pin;    "output  the 13-bit output of mux
+AdderOut12..AdderOut0		 pin;		 "output of the adder
 
 
 
@@ -58,6 +57,13 @@ Mux1Out12..Mux1Out0      pin;    "output  the 13-bit output of mux
 
 ONE   =  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 ];    " 13-bit value of 1
 ZERO  =  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];    " 13-bit value of all 0's
+
+
+
+" Intermediate Terms
+" CarryOuti is meant for storing a sum that cannot fully fit into the i-th bit
+CarryOut13..CarryOut0			     node;		 "carry out of 14 bits
+CarryIn12..CarryIn0					 node;
 
 
 
@@ -69,12 +75,19 @@ HoldPCMuxIn   =  ZERO;         " input PC hold to mux
 DirectJMPMuxIn   =   [DirectJMPMuxIn12..DirectJMPMuxIn0];     " input PC direct jump to mux
 OffsetMuxIn   =   [ OffsetMuxIn7, OffsetMuxIn7, OffsetMuxIn7, OffsetMuxIn7, 
                     OffsetMuxIn7, OffsetMuxIn7..OffsetMuxIn0];     " input PC offset jump to mux
-High5MuxIn   =  [High5MuxIn4..High5MuxIn0, 0, 0, 0, 0, 0, 0, 0, 0]; " input loading highest 5 bits to mux
-Low8MuxIn   =  [ 0, 0, 0, 0, 0, Low8MuxIn7..Low8MuxIn0];         " input loading lowest 8 bits to mux
+High5MuxIn   =  [OffsetMuxIn4..OffsetMuxIn0, 0, 0, 0, 0, 0, 0, 0, 0]; " input loading highest 5 bits to mux
+Low8MuxIn   =  [ 0, 0, 0, 0, 0, OffsetMuxIn7..OffsetMuxIn0];         " input loading lowest 8 bits to mux
+AdderOut  =  [AdderOut12..AdderOut0];		 " adder output
+CarryOut = [CarryIn12..CarryIn0, 0];		 " carry values bits 14 to 0
+PC = [PC12..PC0];
+
+
+
 
 
 
 EQUATIONS
+
 
 " mux
 
@@ -82,19 +95,13 @@ Mux1Out  =  (IncrPCMuxIn & !Sel2 & !Sel1 & !Sel0) #     " Sel = 000 -> PC increm
             (HoldPCMuxIn & !Sel2 & !Sel1 & Sel0) #      " Sel = 001 -> Hold PC
             (DirectJMPMuxIn & !Sel2 & Sel1 & !Sel0) #   " Sel = 010 -> Direct jump
             (OffsetMuxIn & !Sel2 & Sel1 & Sel0) #   		" Sel = 011 -> Offset jump
-            (High5MuxIn & Sel2 & !Sel1 & !Sel0);           	" Sel = 100 -> E
-            (Low8MuxIn & Sel2 & !Sel1 & Sel0);           	" Sel = 101 -> F
-
-
-" load
-" TODO 2023-02-18 01:35: WHERE DOES PC COME FROM?
-LoadOut = PC & (!Load)
-
+            (High5MuxIn & Sel2 & !Sel1 & !Sel0) #           	" Sel = 100 -> Highest 5
+            (Low8MuxIn & Sel2 & !Sel1 & Sel0);           	" Sel = 101 -> Lowest 8
 
 " adder
 
-" TODO 2023-02-18 01:35: REFER TO SET 4 ADDER
+AdderOut = (PC & !Load) $ Mux1Out $ CarryOut[12..0];
+CarryOut[13..1] = ((PC & !Load) & Mux1Out) # (CarryOut[12..0] & ((PC & !Load) $ Mux1Out));
 
 
-
-END     ProgramAddressUnit
+END     ProgramAccess
