@@ -19,6 +19,7 @@ TITLE      'Program Memory Address Unit'
 "               Sel0          - low bit of select input
 "               Load          - tells whether to load PC to accumulator 
 "                               (low for enable, high for disable)
+"                               Used for direct jump
 "				Reset					- resets values
 "				Clock					- cycles clock
 "
@@ -92,6 +93,9 @@ PC.CLK = Clock;
 PC.CLR = Reset;
 
 " mux
+
+" When selecting DirectJMPMuxIn, you *MUST* also flip Load 
+" to high to stop the direct jump value from being added to the PC
 
 Mux1Out  =  (IncrPCMuxIn & !Sel2 & !Sel1 & !Sel0) #     " Sel = 000 -> PC increment +1
             (HoldPCMuxIn & !Sel2 & !Sel1 & Sel0) #      " Sel = 001 -> Hold PC
