@@ -17,7 +17,8 @@ TITLE      'Program Memory Address Unit'
 "				Sel2		  		- highest bit of select input
 "               Sel1          - second bit of select input
 "               Sel0          - low bit of select input
-"               Load          - tells whether to load (low for enable, high for disable)
+"               Load          - tells whether to load PC to accumulator 
+"                               (low for enable, high for disable)
 "				Reset					- resets values
 "				Clock					- cycles clock
 "
@@ -29,7 +30,7 @@ TITLE      'Program Memory Address Unit'
 " Revision History:
 " 02/17/23	 Kemal Pulungan  Added code about multiplexer
 " 02/18/23	 Kemal Pulungan	 Added adder code
-" 02/18/23   Kemal Pulungan  Fixed clock update and highest 5, lowest 8 bit input
+" 02/18/23   Kemal Pulungan  Fixed clock update
 
 
 
