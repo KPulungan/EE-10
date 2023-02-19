@@ -85,7 +85,7 @@ SReg       =  [SReg7..SReg0];			"8 bit S-Register
 ProgramAccess INTERFACE  (OffsetMuxIn7..OffsetMuxIn0, DirectJMPMuxIn12..DirectJMPMuxIn0,
                           Sel2, Sel1, Sel0, Load,
                           Reset, Clock
-                          -> AdderOut12..AdderOut0, PC12..PC0);
+                          -> AddressBus12..AddressBus0, PC12..PC0);
 
 
 " create an instance of the unit to be tested
@@ -103,7 +103,6 @@ EQUATIONS
 
 PAUnit.[OffsetMuxIn7..OffsetMuxIn0]   =  [DataOff7..DataOff0];
 PAUnit.[DirectJMPMuxIn12..DirectJMPMuxIn0]  =  [AddrData12..AddrData0];
-PAUnit.[PC12..PC0] = [AddrData12..AddrData0];
 
 
 " Program Memory Access Unit Control Inputs
@@ -111,7 +110,7 @@ PAUnit.[PC12..PC0] = [AddrData12..AddrData0];
 " connect each Program Memory Access Unit control signal or bus to a subset of
 "    Control29..Control0
 
-PAUnit.Reset  =  Reset;
+PAUnit.Reset  =  !Reset;
 PAUnit.Clock  =  Clock;
 PAUnit.Sel2 = Control2;
 PAUnit.Sel1 = Control1;
@@ -120,7 +119,7 @@ PAUnit.Load = Control3;
 
 " Program Memory Access Unit Outputs
 
-[AccumAddr12..AccumAddr0]  =  PAUnit.[AdderOut12..AdderOut0];
+[AccumAddr12..AccumAddr0]  =  PAUnit.[AddressBus12..AddressBus0];
 
 
 " unused outputs are 0
