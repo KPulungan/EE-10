@@ -32,6 +32,7 @@ TITLE      'Program Memory Address Unit'
 " 02/17/23	 Kemal Pulungan  Added code about multiplexer
 " 02/18/23	 Kemal Pulungan	 Added adder code
 " 02/18/23   Kemal Pulungan  Fixed clock update
+" 02/20/23   Kemal Pulungan  Updated Load control documentation
 
 
 
@@ -89,18 +90,21 @@ AddressBus = [AddressBus12..AddressBus0];
 
 EQUATIONS
 
+" At the press of Clock, the clock will cycle
+" When Reset and Clock are pressed together, the PC value will reset
+
 PC.CLK = Clock;
 PC.CLR = Reset;
 
-" mux
 
+" mux
 
 " When selecting DirectJMPMuxIn, you *MUST* also flip Load 
 " to high to stop the direct jump value from being added to the PC
 
-" When selecting Low8MuxIn, you *MUST* set Load to high in order not to add to the current PC value
+" When selecting Low8MuxIn, you *MUST* set load to high in order not to add to the current PC value
 
-" Everything else, Load is set to low, in order to add to PC value
+" Everything else, load is set to low, in order to add to PC value
 
 Mux1Out  =  (IncrPCMuxIn & !Sel2 & !Sel1 & !Sel0) #     " Sel = 000 -> PC increment +1
             (HoldPCMuxIn & !Sel2 & !Sel1 & Sel0) #      " Sel = 001 -> Hold PC
@@ -111,11 +115,4 @@ Mux1Out  =  (IncrPCMuxIn & !Sel2 & !Sel1 & !Sel0) #     " Sel = 000 -> PC increm
 
 " adder
 
-AdderOut = (PC & !Load) $ Mux1Out $ CarryOut[12..0];
-CarryOut[13..1] = ((PC & !Load) & Mux1Out) # (CarryOut[12..0] & ((PC & !Load) $ Mux1Out));
-
-PC := AdderOut;
-
-AddressBus = PC;
-
-END     ProgramAccess
+AdderOut = (PC & !Load
