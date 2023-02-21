@@ -94,15 +94,20 @@ PC.CLR = Reset;
 
 " mux
 
+
 " When selecting DirectJMPMuxIn, you *MUST* also flip Load 
 " to high to stop the direct jump value from being added to the PC
+
+" When selecting Low8MuxIn, you *MUST* set Load to high in order not to add to the current PC value
+
+" Everything else, Load is set to low, in order to add to PC value
 
 Mux1Out  =  (IncrPCMuxIn & !Sel2 & !Sel1 & !Sel0) #     " Sel = 000 -> PC increment +1
             (HoldPCMuxIn & !Sel2 & !Sel1 & Sel0) #      " Sel = 001 -> Hold PC
             (DirectJMPMuxIn & !Sel2 & Sel1 & !Sel0) #   " Sel = 010 -> Direct jump, Load must be high
             (OffsetMuxIn & !Sel2 & Sel1 & Sel0) #   	" Sel = 011 -> Offset jump
             (High5MuxIn & Sel2 & !Sel1 & !Sel0) #       " Sel = 100 -> Highest 5
-            (Low8MuxIn & Sel2 & !Sel1 & Sel0);          " Sel = 101 -> Lowest 8
+            (Low8MuxIn & Sel2 & !Sel1 & Sel0);          " Sel = 101 -> Lowest 8, Load must be high
 
 " adder
 
