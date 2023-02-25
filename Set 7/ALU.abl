@@ -1,0 +1,103 @@
+MODULE ALU
+TITLE      'Arithmetic Logic Unit'
+
+
+" Description:  This file demonstrates a bus-based arithmetic logic unit. 
+"				This is Kemal Pulungan's submission for EE10a Set 6
+"
+" Inputs:       Data[7..0]  - 8-bit data input
+"               Reset       - Resets values in accumulator with clock cycle
+"               Clock       - Cycles the clock
+"               Sel15       - Selector for bit 15 in instruction (must be 0 for ALU ops)
+"               Sel14       - Selector for bit 14 in instruction (function code)
+"               Sel13       - Selector for bit 13 in instruction (function code)
+"               Sel12       - Selector for bit 12 in instruction (function code)
+"               Sel11       - Selector for bit 11 in instruction (function code)
+"               Sel10       - Selector for bit 10 in instruction (function code)
+"               Sel9        - Selector for bit 9 in instruction (addressing mode)
+"               Sel8        - Selector for bit 8 in instruction (addressing mode)
+"
+" Outputs:      Accum[7..0] - 8-bit data output to accumulator
+"               Flags[7..0] - Each bit is a different flag
+"                             0th bit is Zero, 1st is Sign, 2nd is Signed Overflow,
+"                             3rd is Carry, 4th is unused, 5th is User bit used 
+"                             by STU and CLU instructions, 6th is unused,
+"                             7th is Global Interrupt Enable/Disable
+
+
+" Revision History:
+" 2023-02-25   Kemal Pulungan  Initial code with muxes
+
+
+
+" Pin/Signal Declarations
+
+" Inputs
+
+Data7..Data0        pin;    "input of data
+Sel15               pin;    "bit 15 in instruction
+Sel14               pin;    "bit 14 in instruction (function code)
+Sel13               pin;    "bit 13 in instruction (function code)
+Sel12               pin;    "bit 12 in instruction (function code)
+Sel11               pin;    "bit 11 in instruction (function code)
+Sel10               pin;    "bit 10 in instruction (function code)
+Sel9                pin;    "bit 9 in instruction (addressing mode)
+Sel8                pin;    "bit 8 in instruction (addressing mode)
+Reset			    pin;	"input system reset
+Clock			    pin;	"input system clock
+
+" Outputs
+
+Accum7..Accum0      pin;    "output to accumulator
+Flags7..Flags0      pin;    "flags
+
+
+" Busses/Vectors
+
+Data = [Data7..Data0];      "data input bus
+
+Acccum = [Accum7..Accum0]   pin;    "output to accumulator
+Flags = [Flags7..Flags0]    pin;    "flags
+
+
+" Intermediate Terms
+
+Logic       node;
+
+
+EQUATIONS
+
+" At the press of Clock, the clock will cycle
+" When Reset and Clock are pressed together, the PC value will reset
+
+PC.CLK = Clock;
+PC.CLR = Reset;
+
+
+"F Block
+
+Logic = ()
+
+
+"Shifter/Rotator
+
+"Highest Bit Shifter/Rotator
+
+Accum7 = (Data7 & !Sel15 & Sel13 & !Data1 & Data0) #    "A_n-1 case   ASR
+         (0 & !Sel15 & Sel13 & !Data1 & !Data0) #       "0 case       LSR
+         (Data0 & !Sel15 & Sel13 & Data1 & !Data0) #    "A_0 case     ROR
+         (Flags[3] & !Sel15 & Sel13 & Data1 & Data0) #  "Carry case   RRC
+         (Data6 & !Sel15 & !Sel13 & !Data1 & !Data0);   "A_n-2 case   RLC, LSL, ROL
+
+"Middle Bits Shifter/Rotator
+
+Accum[6..1] = (Data[7..2] & !Sel15 & Sel13) #     "A_i+1      ASR, LSR, ROR, RRC
+              (Data[5..0] & !Sel15 & !Sel13);     "A_i-1      RLC, LSL, ROL
+
+"Lowest Bit Shifter/Rotator
+" TODO 2023-02-25 14:06 HOW TO DETERMINE CONTROL SIGNAL
+Accum0 = ()
+
+
+"Adder
+
