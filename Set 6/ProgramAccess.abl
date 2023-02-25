@@ -115,4 +115,11 @@ Mux1Out  =  (IncrPCMuxIn & !Sel2 & !Sel1 & !Sel0) #     " Sel = 000 -> PC increm
 
 " adder
 
-AdderOut = (PC & !Load
+AdderOut = (PC & !Load) $ Mux1Out $ CarryOut[12..0];
+CarryOut[13..1] = ((PC & !Load) & Mux1Out) # (CarryOut[12..0] & ((PC & !Load) $ Mux1Out));
+
+PC := AdderOut;
+
+AddressBus = PC;
+
+END     ProgramAccess
