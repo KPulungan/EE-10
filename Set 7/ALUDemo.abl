@@ -27,6 +27,8 @@ TITLE      'ALU Unit Demo'
 " 02/14/18   Glen George  Specialized for ALU
 " 01/08/20   Glen George  Updated comments
 " 01/04/21   Glen George  Updated comments
+" 02/25/23   Kemal Pulungan  Uploaded code for demonstrating ALU Module
+" 02/27/23   Kemal Pulungan  Fixed code related to control inputs
 
 
 
@@ -87,8 +89,9 @@ SReg       =  [SReg7..SReg0];			"8 bit S-Register
 " declare the unit to be tested
 
 ALU INTERFACE  (Data7..Data0,
-				Sel20, Sel19, Sel18, Sel17, Sel16, 
-                Sel14, Sel13, Sel12, Sel11, Sel10, Sel9, Sel8, 
+		Sel21, Sel20, Sel19, Sel18, Sel17, Sel16, 
+                CarryIn1, CarryIn0, AccumSel, 
+		LoadFlags, ChangeSZ, ChangeCV, 
                 Reset, Clock
                 -> Accum7..Accum0, Flags7..Flags0);
 
@@ -114,19 +117,22 @@ ALUnit.[Data7..Data0]  =  [DataOff7..DataOff0];
 
 ALUnit.Reset  =  Reset;
 ALUnit.Clock  =  Clock;
+ALUnit.Sel21  =  Control21;
 ALUnit.Sel20  =  Control20;
 ALUnit.Sel19  =  Control19;
 ALUnit.Sel18  =  Control18;
 ALUnit.Sel17  =  Control17;
 ALUnit.Sel16  =  Control16;
 
-ALUnit.Sel14  =  Control14;
-ALUnit.Sel13  =  Control13;
-ALUnit.Sel12  =  Control12;
-ALUnit.Sel11  =  Control11;
-ALUnit.Sel10  =  Control10;
-ALUnit.Sel9  =  Control9;
-ALUnit.Sel8  =  Control8;
+ALUnit.CarryIn1  =  Control14;
+ALUnit.CarryIn0  =  Control13;
+
+ALUnit.AccumSel  =  Control12;
+
+ALUnit.LoadFlags =  Control0;
+ALUnit.ChangeSZ  =  Control1;
+ALUnit.ChangeCV  =  Control2;
+
 
 " ALU Outputs
 
