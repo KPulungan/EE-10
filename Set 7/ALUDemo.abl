@@ -29,6 +29,7 @@ TITLE      'ALU Unit Demo'
 " 01/04/21   Glen George  Updated comments
 " 02/25/23   Kemal Pulungan  Uploaded code for demonstrating ALU Module
 " 02/27/23   Kemal Pulungan  Fixed code related to control inputs
+" 02/27/23   Kemal Pulungan  Added control input to subtract and freeze accumulator.
 
 
 
@@ -90,7 +91,7 @@ SReg       =  [SReg7..SReg0];			"8 bit S-Register
 
 ALU INTERFACE  (Data7..Data0,
 		Sel21, Sel20, Sel19, Sel18, Sel17, Sel16, 
-                CarryIn1, CarryIn0, AccumSel, 
+                CarryIn1, CarryIn0, AccumSel, FreezeAccum, SubtrSel, 
 		LoadFlags, ChangeSZ, ChangeCV, 
                 Reset, Clock
                 -> Accum7..Accum0, Flags7..Flags0);
@@ -126,8 +127,10 @@ ALUnit.Sel16  =  Control16;
 
 ALUnit.CarryIn1  =  Control14;
 ALUnit.CarryIn0  =  Control13;
+ALUnit.SubtrSel  =  Control8;
 
 ALUnit.AccumSel  =  Control12;
+ALUnit.FreezeAccum = Control9;
 
 ALUnit.LoadFlags =  Control0;
 ALUnit.ChangeSZ  =  Control1;
