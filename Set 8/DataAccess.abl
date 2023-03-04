@@ -16,7 +16,7 @@ TITLE 'Data Address Unit'
 
 
 " Revision History:
-" 2023-03-03   Kemal Pulungan  Initial code
+" 2023-03-03   Kemal Pulungan  Initial code with increment code and inputs/outputs
 
 
 
@@ -24,11 +24,21 @@ TITLE 'Data Address Unit'
 
 " Inputs
 
-Accum7..Accum0		pin;		"accumulator address
-Offset7..Offset0	pin;		"offset input
+Accum7..Accum0		pin;	"accumulator address
+Offset7..Offset0	pin;	"offset input
+
+IncBySel            pin;    "selects increment by 0 or 1
+
+IncDecSel           pin;    "Selects whether to increment or decrement
+AddendSel           pin;    "Selects whether addend is 0 or offset
+SXSel               pin;    "Selects whether X, S, 0 or accumulator is sent to pre/post mux
+XUpdateSel          pin;    "Selects whether to update X register or keep it
+SUpdateSel          pin;    "Selects whether to update S register or keep it
+PrePostSel          pin;    "Selects whether pre- or post-increment/decrement
 
 Reset			    pin;	"input system reset
 Clock			    pin;	"input system clock
+
 
 " Outputs
 
@@ -37,22 +47,58 @@ XReg7..XReg0			pin ISTYPE 'REG, KEEP';		"X-register
 SReg7..SReg0			pin ISTYPE 'REG, KEEP';		"S-register
 
 
+
+" Constants
+
+ZERO = [0, 0, 0, 0, 0, 0, 0, 0];	"8-bit zero
+ONE = [1, 1, 1, 1, 1, 1, 1, 1];		"8-bit one
+INC = [0, 0, 0, 0, 0, 0, 0, 1];	    "8-bit value to increment/decrement by
+
+
+" Intermediate Terms
+
+IncBy7..IncBy0          node;    "Tells whether to increment/decrement by 1, or 0
+IncOut7..IncOut0        node;    "output of the incrementer
+MuxSX7..MuxSX0          node;    "Output of mux picking S or X register
+Addend7..Addend0        node;    "Output of mux picking 0 or offset
+PrePost7..PrePost0      node;    "Pre/Post mux picking whether pre- or post-increment
+IncCar8..IncCar0        node;    "Carry values for adding for incrementing/decrementing
+Carry8..Carry0          node;    "Carry values for adding offset and X/S
+
+
 " Busses/Vectors
 
-Accum = [Accum7..Accum0];		"accumulator address input bus
-Offset = [Offset7..Offset0];	"offset input bus
+Accum = [Accum7..Accum0];		        "accumulator address input bus
+Offset = [Offset7..Offset0];	        "offset input bus
 DataAddr = [DataAddr7..DataAddr0];		"Data address output
-XReg = [XReg7..XReg0];			"X-register output bus
-SReg = [SReg7..SReg0];			"S-register output bus
+XReg = [XReg7..XReg0];			        "X-register output bus
+SReg = [SReg7..SReg0];			        "S-register output bus
 
+IncBy = [IncBy7..IncBy0];           "Increment/decrement by 1, or 0 bus
+IncOut = [IncOut7..IncOut0];        "output of the incrementer bus
+MuxSX = [MuxSX7..MuxSX0];           "output of the S/X selector bus
+Addend = [Addend7..Addend0];        "output of the 0 or offset selector bus
+PrePost = [PrePost7..PrePost0];     "output of the pre-/post-increment mux bus
+IncCar = [IncCar7..IncCar0, 0];     "carry values for increment output bus
+Carry = [Carry8..Carry0];           "Carry values for adding offset and X/S bus
 
 
 EQUATIONS
 
 " At the press of Clock, the clock will cycle
+XReg.CLK = Clock;
+SReg.CLK = Clock;
 
-Accum
 
+
+
+IncBy = (ZERO & !IncBySel) #    "Don't change X or S
+        (INC & IncBySel);       "Increment/decrement X or S
+IncOut = MuxSX $ (IncBy $ IncDecSel) $ CarryOut[7..0];
+IncCar[8..1] = (MuxSX & (IncDecSel $ IncBy)) # (IncDecSel & (MuxSX $ (IncDecSel $ IncBy)));
+
+Adder = (Accum & Sel20) $ FBlock $ CarryOut[7..0];
+CarryOut[8..1] = ((Accum & Sel20) & FBlock) # (CarryOut[7..0] & ((Accum & Sel20) $ FBlock));
 
 
 END DataAccess
