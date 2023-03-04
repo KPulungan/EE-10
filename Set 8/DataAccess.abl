@@ -1,0 +1,58 @@
+MODULE DataAccess
+TITLE 'Data Address Unit'
+
+" Description:  This file demonstrates a bus-based data address unit. 
+"				This is Kemal Pulungan's submission for EE10a Set 8.
+"
+" Inputs:       Accum7..Accum0	  - 13-bit accumulator address
+"				Offset7..Offset0  - 8-bit data offset input
+"               Reset       - Resets values in accumulator with clock cycle
+"               Clock       - Cycles the clock
+"
+"
+" Outputs:      DataAddr7..DataAddr0 - 8-bit data output to accumulator
+"				XReg7..XReg0		 - 8-bit X-register
+"				SReg7..SReg0		 - 8-bit S-register
+
+
+" Revision History:
+" 2023-03-03   Kemal Pulungan  Initial code
+
+
+
+" Pin/Signal Declarations
+
+" Inputs
+
+Accum7..Accum0		pin;		"accumulator address
+Offset7..Offset0	pin;		"offset input
+
+Reset			    pin;	"input system reset
+Clock			    pin;	"input system clock
+
+" Outputs
+
+DataAddr7..DataAddr0	pin;	"data address output
+XReg7..XReg0			pin ISTYPE 'REG, KEEP';		"X-register
+SReg7..SReg0			pin ISTYPE 'REG, KEEP';		"S-register
+
+
+" Busses/Vectors
+
+Accum = [Accum7..Accum0];		"accumulator address input bus
+Offset = [Offset7..Offset0];	"offset input bus
+DataAddr = [DataAddr7..DataAddr0];		"Data address output
+XReg = [XReg7..XReg0];			"X-register output bus
+SReg = [SReg7..SReg0];			"S-register output bus
+
+
+
+EQUATIONS
+
+" At the press of Clock, the clock will cycle
+
+Accum
+
+
+
+END DataAccess

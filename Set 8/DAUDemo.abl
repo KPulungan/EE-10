@@ -1,0 +1,132 @@
+MODULE      DAUDemo
+TITLE      'Data Address Unit Unit Demo'
+
+
+" Description:  This module is the top-level for the unit demos using the Unit
+"               Demo Board.  It defines the switches (inputs) and displays
+"               (outputs) for demonstrating each of the different units of the
+"               CPU.  The Unit Demo Board has a total of 51 inputs and 35
+"               outputs.  This version of the demo module is meant to be used
+"               with the Data Memory Access Unit.
+"
+" Inputs:       DataOff[7..0]    - 8 bits of data or offset input
+"               AddrData[12..0]  - 13 bits of address or data input
+"               Control[29..0]   - 30 bits of control input
+"               Reset            - system reset
+"               Clock            - system clock
+"
+" Outputs:      AccumAddr[12..0] - 13 bits of address or accumulator output
+"               XReg[7..0]       - 8 bits of X register output
+"               SReg[7..0]       - 8 bits of S register output
+"               Flags[7..0]      - 8 bits of flag output (active low)
+
+
+" Revision History:
+" 02/06/18   Glen George  Initial Revision
+" 02/14/18   Glen George  Fixed some typos
+" 02/14/18   Glen George  Specialized for Data Memory Access Unit
+" 01/08/20   Glen George  Updated comments
+" 01/04/21   Glen George  Updated comments
+
+
+
+" Pin/Signal Declarations
+
+" Inputs
+
+DataOff7..DataOff6	pin  80..81;	"input  8-bit data/offset input
+DataOff5..DataOff0	pin  83..88;
+
+AddrData12..AddrData9	pin  102..105;	"input  13-bit data or address input
+AddrData8		pin  111;
+AddrData7..AddrData2	pin  93..98;
+AddrData1..AddrData0	pin  100..101;
+
+Control29..Control26	pin  14..11;	"input  30 bits of control input
+Control25..Control20	pin  9..4;
+Control19..Control14	pin  143..138;
+Control13..Control9	pin  135..131;
+Control8..Control4	pin  124..120;
+Control3..Control0	pin  116..113;
+
+Reset			pin  40;	"input  system reset
+
+Clock           	pin  128;	"input  system clock
+
+
+" Outputs
+
+AccumAddr12..AccumAddr8	pin  29..33;	"13 bits of accumulator/address
+AccumAddr7		pin  16;
+AccumAddr6..AccumAddr1	pin  21..26;
+AccumAddr0		pin  28;
+
+XReg7..XReg4		pin  68..71;	"8 bits of X register
+XReg3..XReg0		pin  76..79;
+
+SReg7..SReg2		pin  58..63;	"8 bits of S register
+SReg1..SReg0		pin  66..67;
+
+!Flags7..!Flags5	pin  42..44;	"the flags (8 bits, active low)
+!Flags4..!Flags0	pin  48..52;
+
+
+
+" Buses
+
+DataOff    =  [DataOff7..DataOff0];		"8 bits of data or offset
+AddrData   =  [AddrData12..AddrData0];		"13 bits of address or data
+Control    =  [Control29..Control0];		"30 bits of control
+AccumAddr  =  [AccumAddr12..AccumAddr0];	"accumulator or address (13 bits)
+Flags      =  [Flags7..Flags0];			"the flags (8 bits)
+XReg       =  [XReg7..XReg0];			"8 bit X-Register
+SReg       =  [SReg7..SReg0];			"8 bit S-Register
+
+
+
+" declare the unit to be tested
+
+DataAccess INTERFACE  (Accum7..Accum0, Offset7..Offset0,
+                       control signals,   " you must fill in 'control signals'
+                       Reset, Clock
+                       -> DataAddr7..DataAddr0, XReg7..XReg0, SReg7..SReg0);
+
+
+" create an instance of the unit to be tested
+
+DAUnit    FUNCTIONAL_BLOCK  DataAccess;
+
+
+
+EQUATIONS
+
+
+" connect up the unit to be tested
+
+" Data Memory Access Unit Inputs
+
+DAUnit.[Accum7..Accum0]    =  [AddrData7..AddrData0];
+DAUnit.[Offset7..Offset0]  =  [DataOff7..DataOff0];
+
+" Data Memory Access Unit Control Inputs
+
+" connect each Data Memory Access Unit control signal or bus to a subset of
+"    Control29..Control0
+
+DAUnit.Reset  =  Reset;
+DAUnit.Clock  =  Clock;
+
+" Data Memory Access Unit Outputs
+
+[AccumAddr7..AccumAddr0]  =  DAUnit.[DataAddr7..DataAddr0];
+[XReg7..XReg0]            =  DAUnit.[XReg7..XReg0];
+[SReg7..SReg0]            =  DAUnit.[SReg7..SReg0];
+
+
+" unused outputs are 0
+
+AccumAddr[12..8] = 0;
+Flags[7..0] = 0;
+
+
+END  DAUDemo
