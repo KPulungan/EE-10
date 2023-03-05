@@ -5,10 +5,19 @@ TITLE 'Data Address Unit'
 "				This is Kemal Pulungan's submission for EE10a Set 8.
 "
 " Inputs:       Accum7..Accum0	  - 13-bit accumulator address
-"				Offset7..Offset0  - 8-bit data offset input
+"		Offset7..Offset0  - 8-bit data offset input
+"
+"               IncBySel    - Selects whether to increment or decrement by 0 (0) or 1 (1)
+"               PrePostSel  - Selects whether to increment before (1) or after (0) adding to offset
+"               IncDecSel   - Selects whether to increment (0) or decrement (1)
+"               AddendSel   - Selects whether to add to register 0 (0) or Offset (1)
+"               SXSel2      - Bit 2 of selecting between 0 (00), X (01), S (10), or Accumulator (11)
+"               SXSel1      - Bit 1 of selecting between 0 (00), X (01), S (10), or Accumulator (11)
+"               XUpdateSel  - Selects whether to update (1) X or not (0)
+"               SUpdateSel  - Selects whether to update (1) S or not (0)
+"
 "               Reset       - Resets values in accumulator with clock cycle
 "               Clock       - Cycles the clock
-"
 "
 " Outputs:      DataAddr7..DataAddr0 - 8-bit data output to accumulator
 "				XReg7..XReg0		 - 8-bit X-register
@@ -19,22 +28,34 @@ TITLE 'Data Address Unit'
 " 2023-03-03   Kemal Pulungan  Initial code with increment code and inputs/outputs
 " 2023-03-04   Kemal Pulungan  Added X and S register code, DataAddress adder
 
+TODO 2023-03-04 21:13 FIGURE OUT HOW STORING STUFF WORKS AND CHANGE THE BELOW COMMENT
 " Control signals and Operations
-" Operation:        IncBySel:  PrePostSel:  IncDecSel:  AddendSel:  SXSel2,1:  XUpdateSel:  SUpdateSel:
-" STD/LDD to X         0           0            0          0          01           1            0            
-" STD/LDD to S         0           0            0          0          10           0            1            
-"LD (pre inc) from X   1           1            0          1          01           1            0            
-"LD (pre inc) from S   1           1            0          1          10           0            1            
-"LD (pre dec) from X   1           1            1          1          01           1            0            
-"LD (pre dec) from S   1           1            1          1          10           0            1
-"LD (normal) from X    0          any           0          1          01           0            0
-"ST (pre inc) from X   1           1            0          1          01           1            0            
-"ST (pre inc) from S   1           1            0          1          10           0            1            
-"ST (pre dec) from X   1           1            1          1          01           1            0            
-"ST (pre dec) from S   1           1            1          1          10           0            1
-"ST (normal) from X    0          any           0          1          01           0            0
-" TAX                  0          any           0          0          11           1            0
-" TAS                  0          any           0          0          11           0            1
+" Operation:         IncBySel:  PrePostSel:  IncDecSel:  AddendSel:  SXSel2,1:  XUpdateSel:  SUpdateSel:
+" STD/LDD to X          0           0            0          0          01           1            0
+" STD/LDD to S          0           0            0          0          10           0            1
+"LD (pre inc) from X    1           1            0          1          01           1            0
+"LD (pre inc) from S    1           1            0          1          10           0            1
+"LD (pre dec) from X    1           1            1          1          01           1            0
+"LD (pre dec) from S    1           1            1          1          10           0            1
+"LD (normal) from X     0          any           0          1          01           0            0
+"LD (post inc) from X   1           0            0          1          01           1            0
+"LD (post inc) from S   1           0            0          1          10           0            1
+"LD (post dec) from X   1           0            1          1          01           1            0
+"LD (post dec) from S   1           0            1          1          10           0            1
+"
+" For pre increment, 
+"ST (pre inc) to X      1           1            0          1          01           1            0
+"ST (pre inc) to S      1           1            0          1          10           0            1
+"ST (pre dec) to X      1           1            1          1          01           1            0
+"ST (pre dec) to S      1           1            1          1          10           0            1
+"ST (normal) to X       0          any           0          1          01           0            0
+"ST (post inc) from X   1           0            0          1          01           1            0
+"ST (post inc) from S   1           0            0          1          10           0            1
+"ST (post dec) from X   1           0            1          1          01           1            0
+"ST (post dec) from S   1           0            1          1          10           0            1
+
+" TAX                   0          any           0          0          11           1            0
+" TAS                   0          any           0          0          11           0            1
 
 " Pin/Signal Declarations
 
