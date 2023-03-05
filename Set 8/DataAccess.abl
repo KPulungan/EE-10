@@ -17,8 +17,24 @@ TITLE 'Data Address Unit'
 
 " Revision History:
 " 2023-03-03   Kemal Pulungan  Initial code with increment code and inputs/outputs
+" 2023-03-04   Kemal Pulungan  Added X and S register code, DataAddress adder
 
-
+" Control signals and Operations
+" Operation:        IncBySel:  PrePostSel:  IncDecSel:  AddendSel:  SXSel2,1:  XUpdateSel:  SUpdateSel:
+" STD/LDD to X         0           0            0          0          01           1            0            
+" STD/LDD to S         0           0            0          0          10           0            1            
+"LD (pre inc) from X   1           1            0          1          01           1            0            
+"LD (pre inc) from S   1           1            0          1          10           0            1            
+"LD (pre dec) from X   1           1            1          1          01           1            0            
+"LD (pre dec) from S   1           1            1          1          10           0            1
+"LD (normal) from X    0          any           0          1          01           0            0
+"ST (pre inc) from X   1           1            0          1          01           1            0            
+"ST (pre inc) from S   1           1            0          1          10           0            1            
+"ST (pre dec) from X   1           1            1          1          01           1            0            
+"ST (pre dec) from S   1           1            1          1          10           0            1
+"ST (normal) from X    0          any           0          1          01           0            0
+" TAX                  0          any           0          0          11           1            0
+" TAS                  0          any           0          0          11           0            1
 
 " Pin/Signal Declarations
 
@@ -31,7 +47,8 @@ IncBySel            pin;    "selects increment by 0 or 1
 
 IncDecSel           pin;    "Selects whether to increment or decrement
 AddendSel           pin;    "Selects whether addend is 0 or offset
-SXSel               pin;    "Selects whether X, S, 0 or accumulator is sent to pre/post mux
+SXSel1              pin;    "Bit 1 of selecting whether X, S, 0 or accumulator is sent to pre/post mux
+SXSel2              pin;    "Bit 1 of selecting whether X, S, 0 or accumulator is sent to pre/post mux
 XUpdateSel          pin;    "Selects whether to update X register or keep it
 SUpdateSel          pin;    "Selects whether to update S register or keep it
 PrePostSel          pin;    "Selects whether pre- or post-increment/decrement
@@ -42,9 +59,9 @@ Clock			    pin;	"input system clock
 
 " Outputs
 
-DataAddr7..DataAddr0	pin;	"data address output
-XReg7..XReg0			pin ISTYPE 'REG, KEEP';		"X-register
-SReg7..SReg0			pin ISTYPE 'REG, KEEP';		"S-register
+DataAddr7..DataAddr0	pin;	        "data address output
+XReg7..XReg0		pin ISTYPE 'REG, KEEP';		"X-register
+SReg7..SReg0		pin ISTYPE 'REG, KEEP';		"S-register
 
 
 
@@ -64,6 +81,9 @@ Addend7..Addend0        node;    "Output of mux picking 0 or offset
 PrePost7..PrePost0      node;    "Pre/Post mux picking whether pre- or post-increment
 IncCar8..IncCar0        node;    "Carry values for adding for incrementing/decrementing
 Carry8..Carry0          node;    "Carry values for adding offset and X/S
+XValues7..XValues0      node;    "Stores value to be placed in X before clock cycle
+SValues7..SValues0      node;    "Stores value to be placed in S before clock cycle
+Adder7..Adder0          node;    "Stores value to be placed in Data Address before clock cycle
 
 
 " Busses/Vectors
@@ -81,6 +101,10 @@ Addend = [Addend7..Addend0];        "output of the 0 or offset selector bus
 PrePost = [PrePost7..PrePost0];     "output of the pre-/post-increment mux bus
 IncCar = [IncCar7..IncCar0, 0];     "carry values for increment output bus
 Carry = [Carry8..Carry0];           "Carry values for adding offset and X/S bus
+XValues = [XValues8..XValues0];     "Stores value to be placed in X before clock cycle bus
+SValues = [SValues8..SValues0];     "Stores value to be placed in S before clock cycle bus
+Adder = [Adder7..Adder0];           "Stores value to be placed in Data Address before clock cycle bus
+
 
 
 EQUATIONS
@@ -88,17 +112,34 @@ EQUATIONS
 " At the press of Clock, the clock will cycle
 XReg.CLK = Clock;
 SReg.CLK = Clock;
+XReg.CLR = Reset;
+SReg.CLR = Reset;
 
+Addend = (ZERO & !AddendSel) #  "Adds 0 to whatever register is selected
+         (Offset & AddendSel);  "Adds Offset to whatever register is selected
 
-
+MuxSX = (ZERO & !SXSel2 & !SXSel1) #    "Zero
+        (XReg & !SXSel2 & SXSel1) #     "X register
+        (SReg & SXSel2 & !SXSel1) #     "S register
+        (Accum & SXSel2 & SXSel1) #     "Accumulator
 
 IncBy = (ZERO & !IncBySel) #    "Don't change X or S
         (INC & IncBySel);       "Increment/decrement X or S
 IncOut = MuxSX $ (IncBy $ IncDecSel) $ CarryOut[7..0];
 IncCar[8..1] = (MuxSX & (IncDecSel $ IncBy)) # (IncDecSel & (MuxSX $ (IncDecSel $ IncBy)));
 
-Adder = (Accum & Sel20) $ FBlock $ CarryOut[7..0];
-CarryOut[8..1] = ((Accum & Sel20) & FBlock) # (CarryOut[7..0] & ((Accum & Sel20) $ FBlock));
+XValues = (XReg & !XUpdateSel) #        "Sets X to self
+          (IncOut & XUpdateSel & !SXSel2 & SXSel1);     "Sets X to increment/decrement output
+XReg := XValues;
 
+SValues = (SReg & !SUpdateSel) #        "Sets S to self
+          (IncOut & SUpdateSel & SXSel2 & !SXSel1);     "Sets S to increment/decrement output
+SReg := SValues;
+
+PrePost = (MuxSX & !PrePostSel) #       "Post-add increment
+          (IncOut & PrePostSel);        "Pre-add increment
+
+DataAddr = PrePost $ Addend $ Carry[7..0];
+Carry[8..1] = (PrePost & Addend) # (Carry[7..0] & (PrePost $ Addend));
 
 END DataAccess
