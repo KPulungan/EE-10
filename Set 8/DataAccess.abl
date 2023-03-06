@@ -28,7 +28,7 @@ TITLE 'Data Address Unit'
 " 2023-03-03   Kemal Pulungan  Initial code with increment code and inputs/outputs
 " 2023-03-04   Kemal Pulungan  Added X and S register code, DataAddress adder
 
-TODO 2023-03-04 21:13 FIGURE OUT HOW STORING STUFF WORKS AND CHANGE THE BELOW COMMENT
+"TODO 2023-03-04 21:13 FIGURE OUT HOW STORING STUFF WORKS AND CHANGE THE BELOW COMMENT
 " Control signals and Operations
 " Operation:         IncBySel:  PrePostSel:  IncDecSel:  AddendSel:  SXSel2,1:  XUpdateSel:  SUpdateSel:
 " STD/LDD to X          0           0            0          0          01           1            0
@@ -120,10 +120,11 @@ IncOut = [IncOut7..IncOut0];        "output of the incrementer bus
 MuxSX = [MuxSX7..MuxSX0];           "output of the S/X selector bus
 Addend = [Addend7..Addend0];        "output of the 0 or offset selector bus
 PrePost = [PrePost7..PrePost0];     "output of the pre-/post-increment mux bus
-IncCar = [IncCar7..IncCar0, 0];     "carry values for increment output bus
-Carry = [Carry8..Carry0];           "Carry values for adding offset and X/S bus
-XValues = [XValues8..XValues0];     "Stores value to be placed in X before clock cycle bus
-SValues = [SValues8..SValues0];     "Stores value to be placed in S before clock cycle bus
+IncCar = [IncCar7..IncCar0, IncDecSel];     "carry values for increment output bus
+                                            "Because it can subtract, we have IncDecSel as first carry
+Carry = [Carry7..Carry0, 0];           "Carry values for adding offset and X/S bus
+XValues = [XValues7..XValues0];     "Stores value to be placed in X before clock cycle bus
+SValues = [SValues7..SValues0];     "Stores value to be placed in S before clock cycle bus
 Adder = [Adder7..Adder0];           "Stores value to be placed in Data Address before clock cycle bus
 
 
@@ -142,11 +143,12 @@ Addend = (ZERO & !AddendSel) #  "Adds 0 to whatever register is selected
 MuxSX = (ZERO & !SXSel2 & !SXSel1) #    "Zero
         (XReg & !SXSel2 & SXSel1) #     "X register
         (SReg & SXSel2 & !SXSel1) #     "S register
-        (Accum & SXSel2 & SXSel1) #     "Accumulator
+        (Accum & SXSel2 & SXSel1);     "Accumulator
 
 IncBy = (ZERO & !IncBySel) #    "Don't change X or S
         (INC & IncBySel);       "Increment/decrement X or S
-IncOut = MuxSX $ (IncBy $ IncDecSel) $ CarryOut[7..0];
+
+IncOut = MuxSX $ (IncBy $ IncDecSel) $ IncCar[7..0];
 IncCar[8..1] = (MuxSX & (IncDecSel $ IncBy)) # (IncDecSel & (MuxSX $ (IncDecSel $ IncBy)));
 
 XValues = (XReg & !XUpdateSel) #        "Sets X to self
