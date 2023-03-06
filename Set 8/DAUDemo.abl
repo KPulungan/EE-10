@@ -1,168 +1,143 @@
-MODULE DataAccess
-TITLE 'Data Address Unit'
+MODULE      DAUDemo
+TITLE      'Data Address Unit Unit Demo'
 
-" Description:  This file demonstrates a bus-based data address unit. 
-"				This is Kemal Pulungan's submission for EE10a Set 8.
+
+" Description:  This module is the top-level for the unit demos using the Unit
+"               Demo Board.  It defines the switches (inputs) and displays
+"               (outputs) for demonstrating each of the different units of the
+"               CPU.  The Unit Demo Board has a total of 51 inputs and 35
+"               outputs.  This version of the demo module is meant to be used
+"               with the Data Memory Access Unit.
 "
-" Inputs:       Accum7..Accum0	  - 13-bit accumulator address
-"		Offset7..Offset0  - 8-bit data offset input
+" Inputs:       DataOff[7..0]    - 8 bits of data or offset input
+"               AddrData[12..0]  - 13 bits of address or data input
+"               Control[29..0]   - 30 bits of control input
+"               Reset            - system reset
+"               Clock            - system clock
 "
-"               IncBySel    - Selects whether to increment or decrement by 0 (0) or 1 (1)
-"               PrePostSel  - Selects whether to increment before (1) or after (0) adding to offset
-"               IncDecSel   - Selects whether to increment (0) or decrement (1)
-"               AddendSel   - Selects whether to add to register 0 (0) or Offset (1)
-"               SXSel2      - Bit 2 of selecting between 0 (00), X (01), S (10), or Accumulator (11)
-"               SXSel1      - Bit 1 of selecting between 0 (00), X (01), S (10), or Accumulator (11)
-"               XUpdateSel  - Selects whether to update (1) X or not (0)
-"               SUpdateSel  - Selects whether to update (1) S or not (0)
-"
-"               Reset       - Resets values in accumulator with clock cycle
-"               Clock       - Cycles the clock
-"
-" Outputs:      DataAddr7..DataAddr0 - 8-bit data output to accumulator
-"				XReg7..XReg0		 - 8-bit X-register
-"				SReg7..SReg0		 - 8-bit S-register
+" Outputs:      AccumAddr[12..0] - 13 bits of address or accumulator output
+"               XReg[7..0]       - 8 bits of X register output
+"               SReg[7..0]       - 8 bits of S register output
+"               Flags[7..0]      - 8 bits of flag output (active low)
 
 
 " Revision History:
-" 2023-03-03   Kemal Pulungan  Initial code with increment code and inputs/outputs
-" 2023-03-04   Kemal Pulungan  Added X and S register code, DataAddress adder
+" 02/06/18   Glen George  Initial Revision
+" 02/14/18   Glen George  Fixed some typos
+" 02/14/18   Glen George  Specialized for Data Memory Access Unit
+" 01/08/20   Glen George  Updated comments
+" 01/04/21   Glen George  Updated comments
+" 03/05/23   Kemal Pulungan  Added initial code
 
-"TODO 2023-03-04 21:13 FIGURE OUT HOW STORING STUFF WORKS AND CHANGE THE BELOW COMMENT
-" Control signals and Operations
-" Operation:         IncBySel:  PrePostSel:  IncDecSel:  AddendSel:  SXSel2,1:  XUpdateSel:  SUpdateSel:
-" STD/LDD to X          0           0            0          0          01           1            0
-" STD/LDD to S          0           0            0          0          10           0            1
-"LD (pre inc) from X    1           1            0          1          01           1            0
-"LD (pre inc) from S    1           1            0          1          10           0            1
-"LD (pre dec) from X    1           1            1          1          01           1            0
-"LD (pre dec) from S    1           1            1          1          10           0            1
-"LD (normal) from X     0          any           0          1          01           0            0
-"LD (post inc) from X   1           0            0          1          01           1            0
-"LD (post inc) from S   1           0            0          1          10           0            1
-"LD (post dec) from X   1           0            1          1          01           1            0
-"LD (post dec) from S   1           0            1          1          10           0            1
-"
-" For pre increment, 
-"ST (pre inc) to X      1           1            0          1          01           1            0
-"ST (pre inc) to S      1           1            0          1          10           0            1
-"ST (pre dec) to X      1           1            1          1          01           1            0
-"ST (pre dec) to S      1           1            1          1          10           0            1
-"ST (normal) to X       0          any           0          1          01           0            0
-"ST (post inc) from X   1           0            0          1          01           1            0
-"ST (post inc) from S   1           0            0          1          10           0            1
-"ST (post dec) from X   1           0            1          1          01           1            0
-"ST (post dec) from S   1           0            1          1          10           0            1
 
-" TAX                   0          any           0          0          11           1            0
-" TAS                   0          any           0          0          11           0            1
 
 " Pin/Signal Declarations
 
 " Inputs
 
-Accum7..Accum0		pin;	"accumulator address
-Offset7..Offset0	pin;	"offset input
+DataOff7..DataOff6	pin  80..81;	"input  8-bit data/offset input
+DataOff5..DataOff0	pin  83..88;
 
-IncBySel            pin;    "selects increment by 0 or 1
+AddrData12..AddrData9	pin  102..105;	"input  13-bit data or address input
+AddrData8		pin  111;
+AddrData7..AddrData2	pin  93..98;
+AddrData1..AddrData0	pin  100..101;
 
-IncDecSel           pin;    "Selects whether to increment or decrement
-AddendSel           pin;    "Selects whether addend is 0 or offset
-SXSel1              pin;    "Bit 1 of selecting whether X, S, 0 or accumulator is sent to pre/post mux
-SXSel2              pin;    "Bit 1 of selecting whether X, S, 0 or accumulator is sent to pre/post mux
-XUpdateSel          pin;    "Selects whether to update X register or keep it
-SUpdateSel          pin;    "Selects whether to update S register or keep it
-PrePostSel          pin;    "Selects whether pre- or post-increment/decrement
+Control29..Control26	pin  14..11;	"input  30 bits of control input
+Control25..Control20	pin  9..4;
+Control19..Control14	pin  143..138;
+Control13..Control9	pin  135..131;
+Control8..Control4	pin  124..120;
+Control3..Control0	pin  116..113;
 
-Reset			    pin;	"input system reset
-Clock			    pin;	"input system clock
+Reset			pin  40;	"input  system reset
+
+Clock           	pin  128;	"input  system clock
 
 
 " Outputs
 
-DataAddr7..DataAddr0	pin;	        "data address output
-XReg7..XReg0		pin ISTYPE 'REG, KEEP';		"X-register
-SReg7..SReg0		pin ISTYPE 'REG, KEEP';		"S-register
+AccumAddr12..AccumAddr8	pin  29..33;	"13 bits of accumulator/address
+AccumAddr7		pin  16;
+AccumAddr6..AccumAddr1	pin  21..26;
+AccumAddr0		pin  28;
+
+XReg7..XReg4		pin  68..71;	"8 bits of X register
+XReg3..XReg0		pin  76..79;
+
+SReg7..SReg2		pin  58..63;	"8 bits of S register
+SReg1..SReg0		pin  66..67;
+
+!Flags7..!Flags5	pin  42..44;	"the flags (8 bits, active low)
+!Flags4..!Flags0	pin  48..52;
 
 
 
-" Constants
+" Buses
 
-ZERO = [0, 0, 0, 0, 0, 0, 0, 0];	"8-bit zero
-ONE = [1, 1, 1, 1, 1, 1, 1, 1];		"8-bit one
-INC = [0, 0, 0, 0, 0, 0, 0, 1];	    "8-bit value to increment/decrement by
-
-
-" Intermediate Terms
-
-IncBy7..IncBy0          node;    "Tells whether to increment/decrement by 1, or 0
-IncOut7..IncOut0        node;    "output of the incrementer
-MuxSX7..MuxSX0          node;    "Output of mux picking S or X register
-Addend7..Addend0        node;    "Output of mux picking 0 or offset
-PrePost7..PrePost0      node;    "Pre/Post mux picking whether pre- or post-increment
-IncCar8..IncCar0        node;    "Carry values for adding for incrementing/decrementing
-Carry8..Carry0          node;    "Carry values for adding offset and X/S
-XValues7..XValues0      node;    "Stores value to be placed in X before clock cycle
-SValues7..SValues0      node;    "Stores value to be placed in S before clock cycle
-Adder7..Adder0          node;    "Stores value to be placed in Data Address before clock cycle
+DataOff    =  [DataOff7..DataOff0];		"8 bits of data or offset
+AddrData   =  [AddrData12..AddrData0];		"13 bits of address or data
+Control    =  [Control29..Control0];		"30 bits of control
+AccumAddr  =  [AccumAddr12..AccumAddr0];	"accumulator or address (13 bits)
+Flags      =  [Flags7..Flags0];			"the flags (8 bits)
+XReg       =  [XReg7..XReg0];			"8 bit X-Register
+SReg       =  [SReg7..SReg0];			"8 bit S-Register
 
 
-" Busses/Vectors
 
-Accum = [Accum7..Accum0];		        "accumulator address input bus
-Offset = [Offset7..Offset0];	        "offset input bus
-DataAddr = [DataAddr7..DataAddr0];		"Data address output
-XReg = [XReg7..XReg0];			        "X-register output bus
-SReg = [SReg7..SReg0];			        "S-register output bus
+" declare the unit to be tested
 
-IncBy = [IncBy7..IncBy0];           "Increment/decrement by 1, or 0 bus
-IncOut = [IncOut7..IncOut0];        "output of the incrementer bus
-MuxSX = [MuxSX7..MuxSX0];           "output of the S/X selector bus
-Addend = [Addend7..Addend0];        "output of the 0 or offset selector bus
-PrePost = [PrePost7..PrePost0];     "output of the pre-/post-increment mux bus
-IncCar = [IncCar7..IncCar0, IncDecSel];     "carry values for increment output bus
-                                            "Because it can subtract, we have IncDecSel as first carry
-Carry = [Carry7..Carry0, 0];           "Carry values for adding offset and X/S bus
-XValues = [XValues7..XValues0];     "Stores value to be placed in X before clock cycle bus
-SValues = [SValues7..SValues0];     "Stores value to be placed in S before clock cycle bus
-Adder = [Adder7..Adder0];           "Stores value to be placed in Data Address before clock cycle bus
+DataAccess INTERFACE  (Accum7..Accum0, Offset7..Offset0,
+                       IncBySel, PrePostSel, IncDecSel, AddendSel, 
+                       SXSel2, SXSel1, XUpdateSel, SUpdateSel, 
+                       Reset, Clock
+                       -> DataAddr7..DataAddr0, XReg7..XReg0, SReg7..SReg0);
+
+
+" create an instance of the unit to be tested
+
+DAUnit    FUNCTIONAL_BLOCK  DataAccess;
 
 
 
 EQUATIONS
 
-" At the press of Clock, the clock will cycle
-XReg.CLK = Clock;
-SReg.CLK = Clock;
-XReg.CLR = Reset;
-SReg.CLR = Reset;
 
-Addend = (ZERO & !AddendSel) #  "Adds 0 to whatever register is selected
-         (Offset & AddendSel);  "Adds Offset to whatever register is selected
+" connect up the unit to be tested
 
-MuxSX = (ZERO & !SXSel2 & !SXSel1) #    "Zero
-        (XReg & !SXSel2 & SXSel1) #     "X register
-        (SReg & SXSel2 & !SXSel1) #     "S register
-        (Accum & SXSel2 & SXSel1);     "Accumulator
+" Data Memory Access Unit Inputs
 
-IncBy = (ZERO & !IncBySel) #    "Don't change X or S
-        (INC & IncBySel);       "Increment/decrement X or S
+DAUnit.[Accum7..Accum0]    =  [AddrData7..AddrData0];
+DAUnit.[Offset7..Offset0]  =  [DataOff7..DataOff0];
 
-IncOut = MuxSX $ (IncBy $ IncDecSel) $ IncCar[7..0];
-IncCar[8..1] = (MuxSX & (IncDecSel $ IncBy)) # (IncDecSel & (MuxSX $ (IncDecSel $ IncBy)));
+" Data Memory Access Unit Control Inputs
 
-XValues = (XReg & !XUpdateSel) #        "Sets X to self
-          (IncOut & XUpdateSel & !SXSel2 & SXSel1);     "Sets X to increment/decrement output
-XReg := XValues;
+" connect each Data Memory Access Unit control signal or bus to a subset of
+"    Control29..Control0
 
-SValues = (SReg & !SUpdateSel) #        "Sets S to self
-          (IncOut & SUpdateSel & SXSel2 & !SXSel1);     "Sets S to increment/decrement output
-SReg := SValues;
+DAUnit.IncBySel = Control7;
+DAUnit.PrePostSel = Control6;
+DAUnit.IncDecSel = Control5;
+DAUnit.AddendSel = Control4;
+DAUnit.SXSel2 = Control3;
+DAUnit.SXSel1 = Control2;
+DAUnit.XUpdateSel = Control1;
+DAUnit.SUpdateSel = Control0;
 
-PrePost = (MuxSX & !PrePostSel) #       "Post-add increment
-          (IncOut & PrePostSel);        "Pre-add increment
+DAUnit.Reset  =  Reset;
+DAUnit.Clock  =  Clock;
 
-DataAddr = PrePost $ Addend $ Carry[7..0];
-Carry[8..1] = (PrePost & Addend) # (Carry[7..0] & (PrePost $ Addend));
+" Data Memory Access Unit Outputs
 
-END DataAccess
+[AccumAddr7..AccumAddr0]  =  DAUnit.[DataAddr7..DataAddr0];
+[XReg7..XReg0]            =  DAUnit.[XReg7..XReg0];
+[SReg7..SReg0]            =  DAUnit.[SReg7..SReg0];
+
+
+" unused outputs are 0
+
+AccumAddr[12..8] = 0;
+Flags[7..0] = 0;
+
+
+END  DAUDemo
