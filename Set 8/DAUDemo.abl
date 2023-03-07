@@ -28,6 +28,7 @@ TITLE      'Data Address Unit Unit Demo'
 " 01/08/20   Glen George  Updated comments
 " 01/04/21   Glen George  Updated comments
 " 03/05/23   Kemal Pulungan  Added initial code
+" 03/06/23   Kemal Pulungan  Corresponds to fixed X and S register update
 
 
 
@@ -88,7 +89,7 @@ SReg       =  [SReg7..SReg0];			"8 bit S-Register
 " declare the unit to be tested
 
 DataAccess INTERFACE  (Accum7..Accum0, Offset7..Offset0,
-                       IncBySel, PrePostSel, IncDecSel, AddendSel, 
+                       PrePostSel, IncDecSel, AddendSel, 
                        SXSel2, SXSel1, XUpdateSel, SUpdateSel, 
                        Reset, Clock
                        -> DataAddr7..DataAddr0, XReg7..XReg0, SReg7..SReg0);
@@ -115,7 +116,6 @@ DAUnit.[Offset7..Offset0]  =  [DataOff7..DataOff0];
 " connect each Data Memory Access Unit control signal or bus to a subset of
 "    Control29..Control0
 
-DAUnit.IncBySel = Control7;
 DAUnit.PrePostSel = Control6;
 DAUnit.IncDecSel = Control5;
 DAUnit.AddendSel = Control4;
