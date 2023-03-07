@@ -5,9 +5,8 @@ TITLE 'Data Address Unit'
 "				This is Kemal Pulungan's submission for EE10a Set 8.
 "
 " Inputs:       Accum7..Accum0	  - 13-bit accumulator address
-"		Offset7..Offset0  - 8-bit data offset input
+"		        Offset7..Offset0  - 8-bit data offset input
 "
-"               IncBySel    - Selects whether to increment or decrement by 0 (0) or 1 (1)
 "               PrePostSel  - Selects whether to increment before (1) or after (0) adding to offset
 "               IncDecSel   - Selects whether to increment (0) or decrement (1)
 "               AddendSel   - Selects whether to add to register 0 (0) or Offset (1)
@@ -27,35 +26,60 @@ TITLE 'Data Address Unit'
 " Revision History:
 " 2023-03-03   Kemal Pulungan  Initial code with increment code and inputs/outputs
 " 2023-03-04   Kemal Pulungan  Added X and S register code, DataAddress adder
+" 2023-03-06   Kemal Pulungan  Fixed X and S register update
 
 "TODO 2023-03-04 21:13 FIGURE OUT HOW STORING STUFF WORKS AND CHANGE THE BELOW COMMENT
 " Control signals and Operations
 " Operation:         IncBySel:  PrePostSel:  IncDecSel:  AddendSel:  SXSel2,1:  XUpdateSel:  SUpdateSel:
-" STD/LDD to X          0           0            0          0          01           1            0
-" STD/LDD to S          0           0            0          0          10           0            1
+" Direct Address        0           0            0          1          00           0            0
+"  (STD/LDD)
+"
+"With offset:
 "LD (pre inc) from X    1           1            0          1          01           1            0
 "LD (pre inc) from S    1           1            0          1          10           0            1
 "LD (pre dec) from X    1           1            1          1          01           1            0
 "LD (pre dec) from S    1           1            1          1          10           0            1
 "LD (normal) from X     0          any           0          1          01           0            0
+"LD (normal) from S     0          any           0          1          10           0            0
 "LD (post inc) from X   1           0            0          1          01           1            0
 "LD (post inc) from S   1           0            0          1          10           0            1
 "LD (post dec) from X   1           0            1          1          01           1            0
 "LD (post dec) from S   1           0            1          1          10           0            1
 "
-" For pre increment, 
 "ST (pre inc) to X      1           1            0          1          01           1            0
 "ST (pre inc) to S      1           1            0          1          10           0            1
 "ST (pre dec) to X      1           1            1          1          01           1            0
 "ST (pre dec) to S      1           1            1          1          10           0            1
 "ST (normal) to X       0          any           0          1          01           0            0
+"ST (normal) to S       0          any           0          1          10           0            0
 "ST (post inc) from X   1           0            0          1          01           1            0
 "ST (post inc) from S   1           0            0          1          10           0            1
 "ST (post dec) from X   1           0            1          1          01           1            0
 "ST (post dec) from S   1           0            1          1          10           0            1
+"
+"Without offset:
+"LD (pre inc) from X    1           1            0          0          01           1            0
+"LD (pre inc) from S    1           1            0          0          10           0            1
+"LD (pre dec) from X    1           1            1          0          01           1            0
+"LD (pre dec) from S    1           1            1          0          10           0            1
+"LD (normal) from X     0          any           0          0          01           0            0
+"LD (normal) from S     0          any           0          0          10           0            0
+"LD (post inc) from X   1           0            0          0          01           1            0
+"LD (post inc) from S   1           0            0          0          10           0            1
+"LD (post dec) from X   1           0            1          0          01           1            0
+"LD (post dec) from S   1           0            1          0          10           0            1
+"
+"ST (pre inc) to X      1           1            0          0          01           1            0
+"ST (pre inc) to S      1           1            0          0          10           0            1
+"ST (pre dec) to X      1           1            1          0          01           1            0
+"ST (pre dec) to S      1           1            1          0          10           0            1
+"ST (normal) to X       0          any           0          0          01           0            0
+"ST (normal) to S       0          any           0          0          10           0            0
+"ST (post inc) from X   1           0            0          0          01           1            0
+"ST (post inc) from S   1           0            0          0          10           0            1
+"ST (post dec) from X   1           0            1          0          01           1            0
+"ST (post dec) from S   1           0            1          0          10           0            1
 
-" TAX                   0          any           0          0          11           1            0
-" TAS                   0          any           0          0          11           0            1
 
 " Pin/Signal Declarations
 
@@ -63,8 +87,6 @@ TITLE 'Data Address Unit'
 
 Accum7..Accum0		pin;	"accumulator address
 Offset7..Offset0	pin;	"offset input
-
-IncBySel            pin;    "selects increment by 0 or 1
 
 IncDecSel           pin;    "Selects whether to increment or decrement
 AddendSel           pin;    "Selects whether addend is 0 or offset
@@ -95,15 +117,12 @@ INC = [0, 0, 0, 0, 0, 0, 0, 1];	    "8-bit value to increment/decrement by
 
 " Intermediate Terms
 
-IncBy7..IncBy0          node;    "Tells whether to increment/decrement by 1, or 0
 IncOut7..IncOut0        node;    "output of the incrementer
 MuxSX7..MuxSX0          node;    "Output of mux picking S or X register
 Addend7..Addend0        node;    "Output of mux picking 0 or offset
 PrePost7..PrePost0      node;    "Pre/Post mux picking whether pre- or post-increment
 IncCar8..IncCar0        node;    "Carry values for adding for incrementing/decrementing
 Carry8..Carry0          node;    "Carry values for adding offset and X/S
-XValues7..XValues0      node;    "Stores value to be placed in X before clock cycle
-SValues7..SValues0      node;    "Stores value to be placed in S before clock cycle
 Adder7..Adder0          node;    "Stores value to be placed in Data Address before clock cycle
 
 
@@ -115,16 +134,13 @@ DataAddr = [DataAddr7..DataAddr0];		"Data address output
 XReg = [XReg7..XReg0];			        "X-register output bus
 SReg = [SReg7..SReg0];			        "S-register output bus
 
-IncBy = [IncBy7..IncBy0];           "Increment/decrement by 1, or 0 bus
 IncOut = [IncOut7..IncOut0];        "output of the incrementer bus
 MuxSX = [MuxSX7..MuxSX0];           "output of the S/X selector bus
 Addend = [Addend7..Addend0];        "output of the 0 or offset selector bus
 PrePost = [PrePost7..PrePost0];     "output of the pre-/post-increment mux bus
-IncCar = [IncCar7..IncCar0, IncDecSel];     "carry values for increment output bus
+IncCar = [IncCar7..IncCar0, !IncDecSel];     "carry values for increment output bus
                                             "Because it can subtract, we have IncDecSel as first carry
 Carry = [Carry7..Carry0, 0];           "Carry values for adding offset and X/S bus
-XValues = [XValues7..XValues0];     "Stores value to be placed in X before clock cycle bus
-SValues = [SValues7..SValues0];     "Stores value to be placed in S before clock cycle bus
 Adder = [Adder7..Adder0];           "Stores value to be placed in Data Address before clock cycle bus
 
 
@@ -134,8 +150,8 @@ EQUATIONS
 " At the press of Clock, the clock will cycle
 XReg.CLK = Clock;
 SReg.CLK = Clock;
-XReg.CLR = Reset;
-SReg.CLR = Reset;
+XReg.CLR = !Reset;
+SReg.CLR = !Reset;
 
 Addend = (ZERO & !AddendSel) #  "Adds 0 to whatever register is selected
          (Offset & AddendSel);  "Adds Offset to whatever register is selected
@@ -145,19 +161,14 @@ MuxSX = (ZERO & !SXSel2 & !SXSel1) #    "Zero
         (SReg & SXSel2 & !SXSel1) #     "S register
         (Accum & SXSel2 & SXSel1);     "Accumulator
 
-IncBy = (ZERO & !IncBySel) #    "Don't change X or S
-        (INC & IncBySel);       "Increment/decrement X or S
+IncOut = MuxSX $ IncDecSel $ IncCar[7..0];
+IncCar[8..1] = (MuxSX & IncDecSel) # (IncCar[7..0] & (MuxSX $ IncDecSel));
 
-IncOut = MuxSX $ (IncBy $ IncDecSel) $ IncCar[7..0];
-IncCar[8..1] = (MuxSX & (IncDecSel $ IncBy)) # (IncDecSel & (MuxSX $ (IncDecSel $ IncBy)));
+XReg := (XReg & !XUpdateSel) #        "Sets X to self
+          (IncOut & XUpdateSel);     "Sets X to increment/decrement output
 
-XValues = (XReg & !XUpdateSel) #        "Sets X to self
-          (IncOut & XUpdateSel & !SXSel2 & SXSel1);     "Sets X to increment/decrement output
-XReg := XValues;
-
-SValues = (SReg & !SUpdateSel) #        "Sets S to self
-          (IncOut & SUpdateSel & SXSel2 & !SXSel1);     "Sets S to increment/decrement output
-SReg := SValues;
+SReg := (SReg & !SUpdateSel) #        "Sets S to self
+          (IncOut & SUpdateSel);     "Sets S to increment/decrement output
 
 PrePost = (MuxSX & !PrePostSel) #       "Post-add increment
           (IncOut & PrePostSel);        "Pre-add increment
