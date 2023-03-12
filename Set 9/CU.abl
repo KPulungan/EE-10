@@ -251,7 +251,7 @@ ALULoadFlags = (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8);	"PO
 
 
 " Data Access Unit
-
+" TODO: Determine how to differentiate between Offset and 0
 
 
 
