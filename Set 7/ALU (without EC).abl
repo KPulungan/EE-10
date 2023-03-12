@@ -44,6 +44,7 @@ TITLE      'Arithmetic Logic Unit'
 " 2023-02-28   Kemal Pulungan  Fixed subtract and carry.
 "							   Added control input to subtract and freeze accumulator.
 "                              Added documentation for DEC, INC, CMP, TST.
+" 2023-03-11   Kemal Pulungan  Fixed POPF to better ignore accumulator
 
 " Control signals and Operations
 " Operation:  FBlock:  Carry:   AccumSel:  Sel21:  Sel20:  ChangeCV: ChangeSZ:  SubtrSel:  FreezeAccum:
@@ -194,37 +195,37 @@ Accum := (Accum & LoadFlags) #
 
 "Flag Calculator
 
-Flags[7] := (Flags[7] & !ChangeCV & !ChangeSZ) # 
+Flags[7] := (Flags[7] & !ChangeCV & !ChangeSZ & !LoadFlags) # 
 			(LoadFlags & Data7);
 
-Flags[6] := (Flags[6] & !ChangeCV & !ChangeSZ) # 
+Flags[6] := (Flags[6] & !ChangeCV & !ChangeSZ & !LoadFlags) # 
 			(LoadFlags & Data6);
 
-Flags[5] := (Flags[5] & !ChangeCV & !ChangeSZ) # 
+Flags[5] := (Flags[5] & !ChangeCV & !ChangeSZ & !LoadFlags) # 
 			(LoadFlags & Data5);
 
-Flags[4] := (Flags[4] & !ChangeCV & !ChangeSZ) # 
+Flags[4] := (Flags[4] & !ChangeCV & !ChangeSZ & !LoadFlags) # 
 			(LoadFlags & Data4);
 
-Flags[3] := (Flags[3] & !ChangeCV) # 
-			(CarryOutSR[8] & !AccumSel & ChangeCV) #	"Shifter/Rotator carry
-	   ((CarryOut[8] & AccumSel & ChangeCV) $ SubtrSel) # 
+Flags[3] := (Flags[3] & !ChangeCV & !LoadFlags) # 
+			(CarryOutSR[8] & !AccumSel & ChangeCV & !LoadFlags) #	"Shifter/Rotator carry
+	   (((CarryOut[8] & AccumSel & ChangeCV) $ SubtrSel) & !LoadFlags) # 
 	   (LoadFlags & Data3 & ChangeCV);	"Adder carry 
 
-Flags[2] := (Flags[2] & !ChangeCV) # 
-	   ((CarryOutSR[8] $ CarryOutSR[7]) & !AccumSel & ChangeCV) # 
-	   ((CarryOut[8] $ CarryOut[7]) & AccumSel & ChangeCV) # 
+Flags[2] := (Flags[2] & !ChangeCV & !LoadFlags) # 
+	   ((CarryOutSR[8] $ CarryOutSR[7]) & !AccumSel & ChangeCV & !LoadFlags) # 
+	   ((CarryOut[8] $ CarryOut[7]) & AccumSel & ChangeCV) & !LoadFlags # 
 	   (LoadFlags & Data2 & ChangeCV); 		
 "Overflow (carry out of 7th bit sum and of 6th don't match)
 
-Flags[1] := (Flags[1] & !ChangeSZ) # 
-	   (SROut[7] & !AccumSel & ChangeSZ) # 
-		(Adder[7] & AccumSel & ChangeSZ) # 	
+Flags[1] := (Flags[1] & !ChangeSZ & !LoadFlags) # 
+	   (SROut[7] & !AccumSel & ChangeSZ & !LoadFlags) # 
+		(Adder[7] & AccumSel & ChangeSZ & !LoadFlags) # 	
 	   (LoadFlags & Data1 & ChangeSZ);		"Sign
 
-Flags[0] := (Flags[0] & !ChangeSZ) # 
-	    (SRIsZero & !AccumSel & ChangeSZ & !LoadFlags) # 
-	    (AdderIsZero & AccumSel & ChangeSZ & !LoadFlags) # 
+Flags[0] := (Flags[0] & !ChangeSZ & !LoadFlags) # 
+	    (SRIsZero & !AccumSel & ChangeSZ & !LoadFlags & !LoadFlags) # 
+	    (AdderIsZero & AccumSel & ChangeSZ & !LoadFlags & !LoadFlags) # 
 	    (LoadFlags & Data0 & ChangeSZ);
 
 
