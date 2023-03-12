@@ -1,0 +1,105 @@
+MODULE      CPU
+TITLE      'Caltech10 CPU'
+
+
+" Description:  This is a template file for implementing the Caltech10 CPU.
+"               It is the top-level module which will instantiate and connect
+"               all other modules.
+"
+" Inputs:         ProgramDB[15..0]  - the 16-bit program data bus
+"                 Reset             - system reset signal
+"                 Clock             - system clock
+"
+" I/O:            DataDB[7..0]      - the 8-bit data data bus
+"
+" Outputs:        ProgramAB[12..0]  - the 13-bit program address bus
+"                 DataAB[7..0]      - the 8-bit data address bus
+"                 RD                - read signal for the data data bus
+"                 WR                - write signal for the data data bus
+"                 IO                - memory (0) or I/O (1) is being accessed
+"
+" Status Outputs: Accum[7..0]       - the 8-bit accumulator
+"                 Flags[7..0]       - the 8-bit flag register
+"                 XReg[7..0]        - the 8-bit X register
+"                 SReg[7..0]        - the 8-bit S register
+
+
+" Revision History:
+" 02/15/18   Glen George  Initial Revision
+" 01/05/21   Glen George  Updated comments
+
+
+
+" Pin/Signal Declarations
+
+" Inputs
+
+ProgramDB15..ProgramDB0	pin;	"input  16-bit instruction data bus
+Reset           	pin;	"input  system reset signal
+Clock           	pin;	"input  system clock
+
+
+" I/O
+
+DataDB7..DataDB0	pin;	"I/O  8-bit Data data bus
+
+
+" Outputs
+
+ProgramAB12..ProgramAB0	pin;	"output  the 13-bit Program address bus
+DataAB7..DataAB0	pin;	"output  the 8-bit Data address bus
+RD			pin;	"output  read signal for the Data data bus
+WR			pin;	"output  write signal for the Data data bus
+IO			pin;	"output  accessing memory (0) or I/O (1)
+
+
+" Debugging/Status Outputs
+
+Accum7..Accum0		pin;	"the 8-bit accumulator
+Flags7..Flags0		pin;	"the flags (8 bits)
+XReg7..XReg0		pin;	"the 8-bit X register
+SReg7..SReg0		pin;	"the 8-bit S register
+
+
+" Internal signals
+
+
+
+" declare the used modules
+
+
+" create instances of the modules
+
+
+
+" Busses
+
+ProgramAB  =  [ProgramAB12..ProgramAB0];"13-bit Program address bus
+ProgramDB  =  [ProgramDB15..ProgramDB0];"16-bit Program data bus
+DataAB     =  [DataAB7..DataAB0];	"8-bit Data address bus
+DataDB     =  [DataDB7..DataDB0];	"8-bit Data data bus
+
+
+
+EQUATIONS
+
+
+" output enables
+
+" Data data bus is enabled when writing
+DataDB.OE  =  control unit write signal;
+
+" most signals are always enabled
+ProgramAB.OE         =  ^h1FFF;
+DataAB.OE            =  ^hFF;
+RD.OE                =  1;
+WR.OE                =  1;
+IO.OE                =  1;
+[Accum7..Accum0].OE  =  ^hFF;
+[Flags7..Flags0].OE  =  ^hFF;
+[XReg7..XReg0].OE    =  ^hFF;
+[SReg7..SReg0].OE    =  ^hFF;
+
+
+
+END  CPU
