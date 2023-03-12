@@ -17,7 +17,7 @@ TITLE      'Control Unit'
 "
 "                         Arithmetic Logic Unit control signals:
 "               ALUSel21           - ALU carry in condition
-"               ALUSel20           - ALU select to pass Adder or Data to Accumulator
+"               ALUSel20           - ALU select to pass Adder or 0 to Accumulator
 "               ALUSel19           - ALU F Block bit 3
 "               ALUSel18           - ALU F Block bit 2
 "               ALUSel17           - ALU F Block bit 1
@@ -69,7 +69,7 @@ PAULoad         pin;    "load condition of Program Address Unit
 
 " Arithmetic Logic Unit control signals:
 ALUSel21        pin;    "ALU carry in condition
-ALUSel20        pin;    "ALU select to pass Adder or Data to Accumulator
+ALUSel20        pin;    "ALU select to pass Adder or 0 to Accumulator
 ALUSel19        pin;    "ALU F Block bit 3
 ALUSel18        pin;    "ALU F Block bit 2
 ALUSel17        pin;    "ALU F Block bit 1
@@ -164,7 +164,61 @@ PAULoad = (IR15 & IR14 & !IR13) #		"JMP
           (IR15 & IR14 & !IR13);		"JMP
 
 
+
 " Arithmetic Logic Unit control signal calculation
+" TODO: lowest bit of F Block
+
+" F Block
+"ALU F Block bit 3 follows instruction bit 14 except loading
+ALUSel19 = (IR14 & !IR15) #   "Anything not loading
+           (IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #	  "LDI
+           (IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8);  "LDD
+
+"ALU F Block bit 2 follows instruction bit 12, and when loading bit 2 is 0
+ALUSel18 = (IR12 & !IR15) #   "Anything not loading
+          !(IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #	  "LDI
+          !(IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8);  "LDD
+
+"ALU F Block bit 1 follows instruction bit 13, except loading (1) and CMP (0)
+ALUSel17 = (IR13 & !IR15) #   "Anything not loading
+           (IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #	  "LDI
+           (IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) # "LDD
+          !(!IR15 & !IR14 & IR13 & IR12 & !IR10);  "CMP
+
+"ALU F Block bit 0 follows
+ALUSel16        pin;    "ALU F Block bit 0
+
+
+"ALU Carry bit 1
+ALUCarryIn1 = (!IR15 & IR14 & IR13 & !IR12 & !IR11) #   "ADC
+              (!IR15 & !IR14 & !IR13 & IR12 & IT11) #   "SBB
+              (!IR15 & !IR14 & IR13 & !IR12 & IR11 & IR10 & !IR9 & IR8) #	"NOT
+              (!IR15 & IR14 & !IR13 & IR12 & !IR11);    "RLC
+
+"ALU Carry bit 0
+ALUCarryIn0 = (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #   "INC
+              (!IR15 & !IR14 & IR13 & IR12 & !IR10) #   "CMP
+              (!IR15 & !IR14 & !IR13 & IR12);           "SBB/SUB
+
+
+" only turned 0 by LSL, RLC, POPF
+ALUAccumSel = !((!IR15 & IR14 & !IR13 & IR12) #		"LSL, RLC
+                (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8));	"POPF
+
+
+" Selects whether to carry in
+" only turned 1 by INC and DEC
+ALUSel21 = (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) # 	"INC
+           (!IR15 & IR14 & IR13 & IR12 & IR11 & !IR10 & IR9 & IR8); 		"DEC
+
+
+" Selects whether to pass Accumulator or 0 to Adder
+ALUSel20 = (!IR15 & IR14 & IR13 & !IR12) #   "ADD/ADC
+           (!IR15 & !IR14 & !IR13 & IR12) #   "SUB/SBB
+           (!IR15 & IR14 & IR13 & IR12 & IR11) #   "DEC
+           (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) # 	"INC
+           (!IR15 & !IR14 & IR13 & IR12 & !IR10);  "CMP
+
 
 " only set to 0 by NOT, XOR, AND, OR, TST, POPF
 ALUChangeCV = !((!IR15 & !IR14 & IR13 & !IR12 & IR11 & IR10 & !IR9 & IR8) #		"NOT
@@ -174,23 +228,31 @@ ALUChangeCV = !((!IR15 & !IR14 & IR13 & !IR12 & IR11 & IR10 & !IR9 & IR8) #		"NO
                 (!IR15 & IR14 & !IR13 & !IR12 & IR11 & IR10) #		"TST
                 (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8));	"POPF
 
-" always 1
-ALUChangeSZ = 1;
 
-" only turned 1 by INC and DEC
-ALUSel21 = (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) # 	"INC
-           (!IR15 & IR14 & IR13 & IR12 & IR11 & !IR10 & IR9 & IR8); 		"DEC
+" always 1 except load
+ALUChangeSZ = !IR15;
 
-" only turned 0 by LSL, RLC, POPF
-ALUAccumSel = !((!IR15 & IR14 & !IR13 & IR12) #		"LSL, RLC
-                (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8));	"POPF
+
+" indicates when subtracting
+ALUSubtrSel = (!IR15 & !IR14 & !IR13 & IR12) #   "SUB/SBB
+              (!IR15 & IR14 & IR13 & IR12 & IR11) #   "DEC
+              (!IR15 & !IR14 & IR13 & IR12 & !IR10);  "CMP
+
 
 " only turned 1 by CMP, TST, POPF
 ALUFreezeAccum = (!IR15 & !IR14 & IR13 & IR12 & !IR11 & !IR10) # 	"CMP
                  (!IR15 & IR14 & !IR13 & !IR12 & IR11 & IR10) #		"TST
                  (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8);	"POPF
 
+
 " Enable POPF to happen
 ALULoadFlags = (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8);	"POPF
+
+
+
+" Data Access Unit
+
+
+
 
 END CU
