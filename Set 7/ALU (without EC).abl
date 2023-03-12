@@ -224,8 +224,8 @@ Flags[1] := (Flags[1] & !ChangeSZ & !LoadFlags) #
 	   (LoadFlags & Data1 & ChangeSZ);		"Sign
 
 Flags[0] := (Flags[0] & !ChangeSZ & !LoadFlags) # 
-	    (SRIsZero & !AccumSel & ChangeSZ & !LoadFlags & !LoadFlags) # 
-	    (AdderIsZero & AccumSel & ChangeSZ & !LoadFlags & !LoadFlags) # 
+	    (SRIsZero & !AccumSel & ChangeSZ & !LoadFlags) # 
+	    (AdderIsZero & AccumSel & ChangeSZ & !LoadFlags) # 
 	    (LoadFlags & Data0 & ChangeSZ);
 
 
