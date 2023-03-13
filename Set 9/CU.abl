@@ -251,8 +251,38 @@ ALULoadFlags = (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8);	"PO
 
 
 " Data Access Unit
-" TODO: Determine how to differentiate between Offset and 0
+"Instruction bit 9 indicates if offset instruction is being done
+" Tells to increment/decrement by 1 (1) or 0 (0). Only 0 when "normal" and LDD/LDI/STD
+DAUIncBySel = (IR15 & IR9 & !IR8) #   "1 whenever Load/Store offset operation 
+                                      "(15 is 1, 9 is 1) and bit 8 is 0
+             !(IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #   "0 for LDD
+             !(IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #   "0 for LDI
+             !(IR15 & !IR14 & IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8);   "0 for STD
 
+"TODO: CHECK CONTROL SIGNALS FOR NORMAL, IF I CAN GET AWAY WITH PrePostSel BEING 0
+"1 when pre-increment
+DAUPrePostSel = (IR15 & !IR12 & IR9) #   "1 whenever Load/Store operation and bit 12 is 0
+             ()
+
+"1 when decrementing (bit 11 is 1, bit 9 is 1)
+DAUIncDecSel = (IR15 & IR11 & IR9);
+
+"0 whenever LDD, LDI, STD
+DAUAddendSel = !(IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #   "0 for LDD
+               !(IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #   "0 for LDI
+               !(IR15 & !IR14 & IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8);   "0 for STD
+
+"1 whenever S is selected
+DAUSXSel2 = (IR15 & !IR10 & IR9);
+
+"1 whenever X is selected
+DAUSXSel1 = (IR15 & IR10 & IR9);
+
+"1 whenever X is selected
+XUpdateSel = (IR15 & IR10 & IR9);
+
+"1 whenever S is selected
+SUpdateSel = (IR15 & !IR10 & IR9);
 
 
 END CU

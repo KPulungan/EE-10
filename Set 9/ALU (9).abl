@@ -1,0 +1,232 @@
+MODULE ALU
+TITLE      'Arithmetic Logic Unit'
+
+
+" Description:  This file demonstrates a bus-based arithmetic logic unit. 
+"				This is Kemal Pulungan's submission for EE10a Set 6
+"
+" Inputs:       Data[7..0]  - 8-bit data input
+"               Reset       - Resets values in accumulator with clock cycle
+"               Clock       - Cycles the clock
+"
+"				Sel21 		- Selects whether carry in				
+"				Sel20		- Selects whether to pass Accumulator to Adder or not. 
+"							  If not, Adder = 0 + Data.
+"               Sel19       - Selector for bit 3 in F block input
+"               Sel18       - Selector for bit 2 in F block input
+"               Sel17       - Selector for bit 1 in F block input
+"               Sel16       - Selector for bit 0 in F block input
+"
+"               CarryIn1    - Selector for bit 1 in carry in control (Switch 14)
+"               CarryIn0    - Selector for bit 0 in carry in control (Switch 13)
+"				SubtrSel	- Selector for if I'm subtracting (pin 8)
+"
+"               AccumSel    - Selector whether shift/rotate or adder is accumulator (Switch 12)
+"               FreezeAccum	- freezes accumulator for TST and CMP (pin 9)
+"
+"		LoadFlags   - Selector for POPF (directly loading flags) (Switch 0)
+"		ChangeSZ    - Selector for whether operation changes Zero and Sign (Switch 1)
+"		ChangeCV    - Selector for whether operation changes Carry and Overflow (Switch 0)
+"
+" Outputs:      Accum[7..0] - 8-bit data output to accumulator
+"               Flags[7..0] - Each bit is a different flag
+"                             0th bit is Zero, 1st is Sign, 2nd is Signed Overflow,
+"                             3rd is Carry, 4th is unused, 5th is User bit used 
+"                             by STU and CLU instructions, 6th is unused,
+"                             7th is Global Interrupt Enable/Disable
+
+
+" Revision History:
+" 2023-02-25   Kemal Pulungan  Initial code with muxes for Shift/Rotate
+" 2023-02-25   Kemal Pulungan  Added Adder, F Block
+" 2023-02-26   Kemal Pulungan  Added Flag computation code
+" 2023-02-27   Kemal Pulungan  Fixed control inputs, flag computation, Adder output
+" 2023-02-28   Kemal Pulungan  Fixed subtract and carry.
+"							   Added control input to subtract and freeze accumulator.
+"                              Added documentation for DEC, INC, CMP, TST.
+" 2023-03-11   Kemal Pulungan  Fixed POPF to better ignore accumulator
+
+" Control signals and Operations
+" Operation:  FBlock:  Carry:   AccumSel:  Sel21:  Sel20:  ChangeCV: ChangeSZ:  SubtrSel:  FreezeAccum:
+"    ADD       1010      00         1        0       1        1          1         0            0
+"    ADC       1010      10         1        0       1        1          1         0            0
+"    SUB       0101	     01         1        0       1        1          1         1            0
+"    SBB       0101	     11         1        0       1        1          1         1            0
+"   NOT A      0011      10         1        0       0        0          1         0            0
+"   NOT B      0101      00         1        0       0        0          1         0            0
+"  A XOR B     0110      00         1        0       0        0          1         0            0
+"  A AND B     1000      00         1        0       0        0          1         0            0
+"   A OR B     1110      00         1        0       0        0          1         0            0
+"    LSL       any       00         0        0      any       1          1         0            0
+"    RLC       any       10         0        0      any       1          1         0            0
+"    DEC	   1111      00         1        1       1        1          1         1            0
+"    INC       0000      01         1        1       1        1          1         0            0
+"    CMP       0101      01         1        0       1        1          1         1            1
+"    TST       1000      00         1        0       0        0          1         0            1
+"
+" Flag Input:
+" Set LoadFlags to 1, and set all other control inputs to 0
+"
+" Direct Accumulator input:
+" Set FBlock to 1010, set AccumSel to 1, set Sel20 to 0.
+
+
+
+" Pin/Signal Declarations
+
+" Inputs
+
+Data7..Data0        pin;    "input of data
+
+Sel21 				pin;	"Carry
+Sel20				pin;	"Accumulator to Adder (high to pass)
+Sel19               pin;    "bit 3 in F block input
+Sel18               pin;    "bit 2 in F block input
+Sel17               pin;    "bit 1 in F block input
+Sel16               pin;    "bit 0 in F block input
+
+CarryIn1               pin;    "bit 1 carry in control
+CarryIn0               pin;    "bit 0 carry in control
+SubtrSel			pin;	"selects whether to trigger flag to subtract
+
+AccumSel               pin;    "selects whether accumulator is adder or shift/rotate
+FreezeAccum			pin;    "selects whether to freeze accumulator
+
+LoadFlags	       pin;	"selects for POPF (directly loading flag)
+ChangeSZ	       pin;	"selects if operation affects Sign and Zero
+ChangeCV	       pin;	"selects if operation affects Carry and Overflow
+
+Reset			    pin;	"input system reset
+Clock			    pin;	"input system clock
+
+" Outputs
+
+Accum7..Accum0      pin ISTYPE 'REG, KEEP';    "output to accumulator
+Flags7..Flags0      pin ISTYPE 'REG, KEEP';    "flags
+
+
+" Constants
+ZERO = [0, 0, 0, 0, 0, 0, 0, 0];	"8-bit zero
+ONE = [1, 1, 1, 1, 1, 1, 1, 1];		"8-bit one
+
+
+" Intermediate Terms
+
+FBlock7..FBlock0		node;	"output of F block
+Adder7..Adder0		node;	"output of adder
+CarryIn				pin;	"To be carried into adder, mux output
+CarryOut8..CarryOut0		node;		 "carry out of 9 bits
+CarryOutSR8..CarryOutSR0		node;		 "carry out of 9 bits
+SROut7..SROut0		node;	"Shift/Rotate Output
+AdderIsZero		node;   "Checks if adder output is zero, input to flags
+SRIsZero		node;   "Checks if shifter/rotator output is zero, input to flags
+
+
+" Busses/Vectors
+
+Data = [Data7..Data0];      "data input bus
+FBlock = [FBlock7..FBlock0];	"F block output bus
+Accum = [Accum7..Accum0];  "output to accumulator
+Flags = [Flags7..Flags0];   "flags
+Adder = [Adder7..Adder0];	"adder output
+CarryOut = [CarryOut8..CarryOut1, CarryIn];
+		 "carry values bits 8 to 0
+CarryOutSR = [CarryOutSR8..CarryOutSR1, CarryIn];
+		 "carry values bits 8 to 0 for shift/rotate
+SROut = [SROut7..SROut0];	"Shift/Rotate output bus
+
+
+EQUATIONS
+
+" At the press of Clock, the clock will cycle
+" When Reset and Clock are pressed together, the PC value will reset
+
+Accum.CLK = Clock;
+Accum.CLR = !Reset;
+Flags.CLK = Clock;
+Flags.CLR = !Reset;
+
+
+"CarryIn multiplexer
+
+CarryIn = (0 & !CarryIn1 & !CarryIn0) #
+	  (1 & !CarryIn1 & CarryIn0) #
+	  (Flags3 & CarryIn1 & !CarryIn0) #
+	  (!Flags3 & CarryIn1 & CarryIn0);
+
+
+"F Block
+"Performs 0, NOT A, NOT B, XOR, AND, OR, 1
+
+FBlock = (Sel16 & !Accum & !Data) # 	"bit 0 for F block
+	 (Sel17 & !Accum & Data) # 		"bit 1 for F block
+	 (Sel18 & Accum & !Data) # 		"bit 2 for F block
+	 (Sel19 & Accum & Data);		"bit 3 for F block
+
+
+"Shifter/Rotator
+
+"For the purposes of this homework, only RLC and LSL are used
+"It is equivalent to adding the accumulator to itself
+
+SROut = Accum $ Accum $ CarryOutSR[7..0];
+CarryOutSR[8..1] = (Accum & Accum) # (CarryOutSR[7..0] & (Accum $ Accum));
+SRIsZero = !SROut7 & !SROut6 & !SROut5 & !SROut4 & 
+	   !SROut3 & !SROut2 & !SROut1 & !SROut0;
+
+
+"Adder
+"Adding: set F Block to pass Data (1010)
+"Subtracting: set F Block to NOT Data (0101)
+
+Adder = (Accum & Sel20) $ FBlock $ CarryOut[7..0];
+CarryOut[8..1] = ((Accum & Sel20) & FBlock) # (CarryOut[7..0] & ((Accum & Sel20) $ FBlock));
+AdderIsZero = !Adder7 & !Adder6 & !Adder5 & !Adder4 & 
+	      !Adder3 & !Adder2 & !Adder1 & !Adder0;
+
+
+"Accumulator Result Multiplexer
+
+Accum := (Accum & LoadFlags) # 
+		 (Accum & FreezeAccum) #
+		 (SROut & !AccumSel & !LoadFlags & !FreezeAccum) #	"Shifter/Rotator becomes Accumulator
+	 (Adder & AccumSel & !LoadFlags & !FreezeAccum);	"Adder becomes Accumulator
+
+
+"Flag Calculator
+
+Flags[7] := (Flags[7] & !ChangeCV & !ChangeSZ & !LoadFlags) # 
+			(LoadFlags & Data7);
+
+Flags[6] := (Flags[6] & !ChangeCV & !ChangeSZ & !LoadFlags) # 
+			(LoadFlags & Data6);
+
+Flags[5] := (Flags[5] & !ChangeCV & !ChangeSZ & !LoadFlags) # 
+			(LoadFlags & Data5);
+
+Flags[4] := (Flags[4] & !ChangeCV & !ChangeSZ & !LoadFlags) # 
+			(LoadFlags & Data4);
+
+Flags[3] := (Flags[3] & !ChangeCV & !LoadFlags) # 
+			(CarryOutSR[8] & !AccumSel & ChangeCV & !LoadFlags) #	"Shifter/Rotator carry
+	   (((CarryOut[8] & AccumSel & ChangeCV) $ SubtrSel) & !LoadFlags) # 
+	   (LoadFlags & Data3 & ChangeCV);	"Adder carry 
+
+Flags[2] := (Flags[2] & !ChangeCV & !LoadFlags) # 
+	   ((CarryOutSR[8] $ CarryOutSR[7]) & !AccumSel & ChangeCV & !LoadFlags) # 
+	   ((CarryOut[8] $ CarryOut[7]) & AccumSel & ChangeCV) & !LoadFlags # 
+	   (LoadFlags & Data2 & ChangeCV); 		
+"Overflow (carry out of 7th bit sum and of 6th don't match)
+
+Flags[1] := (Flags[1] & !ChangeSZ & !LoadFlags) # 
+	   (SROut[7] & !AccumSel & ChangeSZ & !LoadFlags) # 
+		(Adder[7] & AccumSel & ChangeSZ & !LoadFlags) # 	
+	   (LoadFlags & Data1 & ChangeSZ);		"Sign
+
+Flags[0] := (Flags[0] & !ChangeSZ & !LoadFlags) # 
+	    (SRIsZero & !AccumSel & ChangeSZ & !LoadFlags) # 
+	    (AdderIsZero & AccumSel & ChangeSZ & !LoadFlags) # 
+	    (LoadFlags & Data0 & ChangeSZ);
+
+
+END ALU

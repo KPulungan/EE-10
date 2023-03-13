@@ -67,9 +67,39 @@ SReg7..SReg0		pin;	"the 8-bit S register
 
 " declare the used modules
 
+ProgramAccess INTERFACE  (OffsetMuxIn7..OffsetMuxIn0, DirectJMPMuxIn12..DirectJMPMuxIn0,
+                          Sel2, Sel1, Sel0, Load,
+                          Reset, Clock
+                          -> AddressBus12..AddressBus0, PC12..PC0);
+
+ALU INTERFACE  (Data7..Data0,
+		        Sel21, Sel20, Sel19, Sel18, Sel17, Sel16, 
+                CarryIn1, CarryIn0, AccumSel, FreezeAccum, SubtrSel, 
+		        LoadFlags, ChangeSZ, ChangeCV, 
+                Reset, Clock
+                -> Accum7..Accum0, Flags7..Flags0);
+
+DataAccess INTERFACE  (Accum7..Accum0, Offset7..Offset0,
+                       PrePostSel, IncDecSel, AddendSel, 
+                       SXSel2, SXSel1, XUpdateSel, SUpdateSel, 
+                       Reset, Clock
+                       -> DataAddr7..DataAddr0, XReg7..XReg0, SReg7..SReg0);
+
+CU INTERFACE  (IR15..IR0, Flags7..Flags0, Reset, Clock
+               -> PAUSel2, PAUSel1, PAUSel0, PAULoad,
+               ALUSel21, ALUSel20, ALUSel19, ALUSel18, ALUSel17, ALUSel16,
+               ALUCarryIn1, ALUCarryIn0, ALUSubtrSel, ALUAccumSel, 
+               ALUFreezeAccum, ALULoadFlags, ALUChangeSZ, ALUChangeCV,
+               DAUPrePostSel, DAUIncDecSel, DAUAddendSel,
+               DAUSXSel2, DAUSXSel1, DAUXUpdateSel, DAUSUpdateSel);
+
+
 
 " create instances of the modules
-
+PAUnit    FUNCTIONAL_BLOCK  ProgramAccess;
+ALUnit    FUNCTIONAL_BLOCK  ALU;
+DAUnit    FUNCTIONAL_BLOCK  DataAccess;
+CUnit     FUNCTIONAL_BLOCK  CU;
 
 
 " Busses
@@ -82,7 +112,34 @@ DataDB     =  [DataDB7..DataDB0];	"8-bit Data data bus
 
 
 EQUATIONS
+"TODO: Figure out how reset and clock affect things
 
+"Program Memory Access Unit inputs:
+PAUnit.[OffsetMuxIn7..OffsetMuxIn0]   =  [DataAB7..DataAB0];
+PAUnit.[DirectJMPMuxIn12..DirectJMPMuxIn0]  =  [ProgramAB12..ProgramAB0];
+
+"Program Memory Access Unit control signals:
+PAUnit.Reset  =  !Reset;
+PAUnit.Clock  =  Clock;
+PAUnit.Sel2 = CUnit.PAUSel2;
+PAUnit.Sel1 = CUnit.PAUSel1;
+PAUnit.Sel0 = CUnit.PAUSel0;
+PAUnit.Load = CUnit.PAULoad;
+
+
+"Arithmetic Logic Unit inputs:
+
+
+
+"Control Unit input:
+CUnit.[IR15..IR0] = [ProgramDB15..ProgramDB0];
+
+"Control Unit control signals:
+CUnit.Reset = Reset;
+CUnit.Clock = Clock;
+
+
+"
 
 " output enables
 
