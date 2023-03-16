@@ -137,7 +137,7 @@ PAUnit.Load = CUnit.PAULoad;
 "ALU Data Mux
 "Selects between DataDB, Instruction Register, 
 "X, S occur simultaneous with some instructions
-"TODO: FIgure out what happens with X+o or S+o
+"TODO: Figure out what happens with X+o or S+o
 DataOff = (DataDB & ?) #    "Data Data Bus
           ()
 

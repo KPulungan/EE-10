@@ -47,6 +47,7 @@ TITLE      'Control Unit'
 
 " Revision History:
 " 2023-03-11   Kemal Pulungan  Initial code
+" 2023-03-16   Kemal Pulungan  F block completed, along with everything else
 
 
 " Pin/Signal Declarations
