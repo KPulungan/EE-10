@@ -62,7 +62,7 @@ SReg7..SReg0		pin;	"the 8-bit S register
 
 
 " Internal signals
-
+DataOff7..DataOff0  node;   "8-bit data to ALU mux output
 
 
 " declare the used modules
@@ -109,10 +109,17 @@ ProgramDB  =  [ProgramDB15..ProgramDB0];"16-bit Program data bus
 DataAB     =  [DataAB7..DataAB0];	"8-bit Data address bus
 DataDB     =  [DataDB7..DataDB0];	"8-bit Data data bus
 
+"Internal
+DataOff = [DataOff7..DataOff0];     "8-bit internal mux for input to ALU
 
 
 EQUATIONS
 "TODO: Figure out how reset and clock affect things
+
+"Data Bus Mux
+"TODO
+DataDB = 
+
 
 "Program Memory Access Unit inputs:
 PAUnit.[OffsetMuxIn7..OffsetMuxIn0]   =  [DataAB7..DataAB0];
@@ -127,9 +134,21 @@ PAUnit.Sel0 = CUnit.PAUSel0;
 PAUnit.Load = CUnit.PAULoad;
 
 
+"ALU Data Mux
+"Selects between DataDB, Instruction Register, 
+"X, S occur simultaneous with some instructions
+"TODO: FIgure out what happens with X+o or S+o
+DataOff = (DataDB & ?) #    "Data Data Bus
+          ()
+
+
 "Arithmetic Logic Unit inputs:
+ALUnit.[Data7..Data0]  =  [DataOff7..DataOff0];
 
 
+"ALU outputs:
+[AccumAddr7..AccumAddr0]  =  ALUnit.[Accum7..Accum0];
+[Flags7..Flags0]          =  ALUnit.[Flags7..Flags0];
 
 "Control Unit input:
 CUnit.[IR15..IR0] = [ProgramDB15..ProgramDB0];

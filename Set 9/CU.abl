@@ -166,27 +166,29 @@ PAULoad = (IR15 & IR14 & !IR13) #		"JMP
 
 
 " Arithmetic Logic Unit control signal calculation
-" TODO: lowest bit of F Block
 
 " F Block
 "ALU F Block bit 3 follows instruction bit 14 except loading
-ALUSel19 = (IR14 & !IR15) #   "Anything not loading
+ALUSel19 = (!IR15 & IR14) #   "Anything not loading
            (IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #	  "LDI
            (IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8);  "LDD
 
 "ALU F Block bit 2 follows instruction bit 12, and when loading bit 2 is 0
-ALUSel18 = (IR12 & !IR15) #   "Anything not loading
+ALUSel18 = (!IR15 & IR12) #   "Anything not loading
           !(IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #	  "LDI
           !(IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8);  "LDD
 
 "ALU F Block bit 1 follows instruction bit 13, except loading (1) and CMP (0)
-ALUSel17 = (IR13 & !IR15) #   "Anything not loading
+ALUSel17 = (!IR15 & IR13) #   "Anything not loading
            (IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #	  "LDI
            (IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) # "LDD
           !(!IR15 & !IR14 & IR13 & IR12 & !IR10);  "CMP
 
-"ALU F Block bit 0 follows
-ALUSel16        pin;    "ALU F Block bit 0
+"ALU F Block bit 0 is 1 when SUB, SBB, NOT, DEC, CMP
+ALUSel16 = (!IR15 & !IR14 & !IR13 & IR12) #        "SUB/SBB
+           (!IR15 & !IR14 & IR13 & !IR12 & IR11) # "NOT
+           (!IR15 & IR14 & IR13 & IR12 & IR11) #   "DEC
+           (!IR15 & !IR14 & IR13 & IR12 & !IR10);  "CMP
 
 
 "ALU Carry bit 1
@@ -259,10 +261,8 @@ DAUIncBySel = (IR15 & IR9 & !IR8) #   "1 whenever Load/Store offset operation
              !(IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #   "0 for LDI
              !(IR15 & !IR14 & IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8);   "0 for STD
 
-"TODO: CHECK CONTROL SIGNALS FOR NORMAL, IF I CAN GET AWAY WITH PrePostSel BEING 0
 "1 when pre-increment
-DAUPrePostSel = (IR15 & !IR12 & IR9) #   "1 whenever Load/Store operation and bit 12 is 0
-             ()
+DAUPrePostSel = (IR15 & !IR12 & IR9);   "1 whenever Load/Store operation and bit 12 is 0
 
 "1 when decrementing (bit 11 is 1, bit 9 is 1)
 DAUIncDecSel = (IR15 & IR11 & IR9);
