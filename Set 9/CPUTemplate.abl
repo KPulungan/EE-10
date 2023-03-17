@@ -117,7 +117,8 @@ EQUATIONS
 "TODO: Figure out how reset and clock affect things
 
 "Data Bus Mux
-"TODO
+"Between Accumulator, Flags, PC[7..0] and PC[12..8]
+"TODO what is PC fork? What determines which is selected?
 DataDB = 
 
 
@@ -134,21 +135,69 @@ PAUnit.Sel0 = CUnit.PAUSel0;
 PAUnit.Load = CUnit.PAULoad;
 
 
-"ALU Data Mux
+
+"Arithmetic Logic Unit
+"Input Data Mux
 "Selects between DataDB, Instruction Register, 
 "X, S occur simultaneous with some instructions
 "TODO: Figure out what happens with X+o or S+o
 DataOff = (DataDB & ?) #    "Data Data Bus
-          ()
-
+          ();
 
 "Arithmetic Logic Unit inputs:
 ALUnit.[Data7..Data0]  =  [DataOff7..DataOff0];
 
+"ALU control signal inputs:
+"TODO: figure out reset and clock
+ALUnit.Reset  =  CUnit.
+ALUnit.Clock  =  CUnit.
+
+ALUnit.Sel21  =  CUnit.ALUSel21;
+ALUnit.Sel20  =  CUnit.ALUSel20;
+ALUnit.Sel19  =  CUnit.ALUSel19;
+ALUnit.Sel18  =  CUnit.ALUSel18;
+ALUnit.Sel17  =  CUnit.ALUSel17;
+ALUnit.Sel16  =  CUnit.ALUSel16;
+
+ALUnit.CarryIn1  = CUnit.ALUCarryIn1;
+ALUnit.CarryIn0  = CUnit.ALUCarryIn0;
+ALUnit.SubtrSel  = CUnit.ALUSubtrSel;
+
+ALUnit.AccumSel  = CUnit.ALUAccumSel;
+ALUnit.FreezeAccum = CUnit.ALUFreezeAccum;
+ALUnit.LoadFlags = CUnit.ALULoadFlags;
+ALUnit.ChangeSZ  = CUnit.ALUChangeSZ;
+ALUnit.ChangeCV  = CUnit.ALUChangeCV;
 
 "ALU outputs:
-[AccumAddr7..AccumAddr0]  =  ALUnit.[Accum7..Accum0];
-[Flags7..Flags0]          =  ALUnit.[Flags7..Flags0];
+"TODO: Do I set it to an internal bus or directly to other units?
+[AccumAddr7..AccumAddr0]  =  ALUnit.[Accum7..Accum0];   "Used by DAU and DataDB
+[Flags7..Flags0]          =  ALUnit.[Flags7..Flags0];   "Used by DataDB
+
+
+
+"Data Access Unit
+"Inputs
+"TODO: Do I set it to an internal bus or directly to other units?
+DAUnit.[Accum7..Accum0] = ALUnit.[Accum7..Accum0];
+DAUnit.[Offset7..Offset0] = ;
+
+"DAU Control inputs:
+DAUnit.PrePostSel = CUnit.DAUPrePostSel;
+DAUnit.IncDecSel = CUnit.DAUIncDecSel;
+DAUnit.AddendSel = CUnit.DAUAddendSel;
+DAUnit.SXSel2 = CUnit.DAUSXSel2;
+DAUnit.SXSel1 = CUnit.DAUSXSel1;
+DAUnit.XUpdateSel = CUnit.DAUXUpdateSel;
+DAUnit.SUpdateSel = CUnit.DAUSUpdateSel;
+
+"DAU Outputs:
+"TODO: what's the deal with X and S?
+[DataAB7..DataAB0]  =  DAUnit.[DataAddr7..DataAddr0];
+[XReg7..XReg0] =  DAUnit.[XReg7..XReg0];
+[SReg7..SReg0] =  DAUnit.[SReg7..SReg0];
+
+
 
 "Control Unit input:
 CUnit.[IR15..IR0] = [ProgramDB15..ProgramDB0];
