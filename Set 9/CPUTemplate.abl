@@ -116,12 +116,6 @@ DataOff = [DataOff7..DataOff0];     "8-bit internal mux for input to ALU
 EQUATIONS
 "TODO: Figure out how reset and clock affect things
 
-"Data Bus Mux
-"Between Accumulator, Flags, PC[7..0] and PC[12..8]
-"TODO what is PC fork? What determines which is selected?
-DataDB = 
-
-
 "Program Memory Access Unit inputs:
 PAUnit.[OffsetMuxIn7..OffsetMuxIn0]   =  [DataAB7..DataAB0];
 PAUnit.[DirectJMPMuxIn12..DirectJMPMuxIn0]  =  [ProgramAB12..ProgramAB0];
@@ -137,6 +131,9 @@ PAUnit.Load = CUnit.PAULoad;
 
 
 "Arithmetic Logic Unit
+ALU.Clock = Clock;
+ALU.Reset = Reset;
+
 "Input Data Mux
 "Selects between DataDB, Instruction Register, 
 "X, S occur simultaneous with some instructions
@@ -171,8 +168,8 @@ ALUnit.ChangeCV  = CUnit.ALUChangeCV;
 
 "ALU outputs:
 "TODO: Do I set it to an internal bus or directly to other units?
-[AccumAddr7..AccumAddr0]  =  ALUnit.[Accum7..Accum0];   "Used by DAU and DataDB
-[Flags7..Flags0]          =  ALUnit.[Flags7..Flags0];   "Used by DataDB
+[AccumAddr7..AccumAddr0] = ALUnit.[Accum7..Accum0];   "Used by DAU and DataDB
+[Flags7..Flags0] = ALUnit.[Flags7..Flags0];           "Used by DataDB
 
 
 
@@ -200,14 +197,19 @@ DAUnit.SUpdateSel = CUnit.DAUSUpdateSel;
 
 
 "Control Unit input:
-CUnit.[IR15..IR0] = [ProgramDB15..ProgramDB0];
+CUnit.[IR15..IR0] := [ProgramDB15..ProgramDB0];
 
 "Control Unit control signals:
 CUnit.Reset = Reset;
 CUnit.Clock = Clock;
 
 
-"
+
+"Data Bus Mux
+"Between Accumulator, Flags, PC[7..0] and PC[12..8]
+"TODO what is PC fork? What determines which is selected?
+DataDB = 
+
 
 " output enables
 

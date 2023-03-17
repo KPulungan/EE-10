@@ -43,6 +43,9 @@ TITLE      'Control Unit'
 "               RD		- Read signal
 "               WR		- Write signal
 "               IO		- Input/Output signal
+"
+"               DataOffset[7..0]       - Lower 8 bits of Instruction Register (for general offset)
+"               JMPOffset[12..0]   - Lower 12 bits of Instruction Register (for jumps)
 
 
 " Revision History:
@@ -61,6 +64,11 @@ Clock 				pin;		"clock cycle
 
 
 " Outputs
+"General:
+DataOffset7..DataOffset0 pin;   "Lower 8 bits of Instruction Register (for general offset)
+JMPOffset12..JMPOffset0 pin;    "Lower 12 bits of Instruction Register (for jumps)
+RD              pin;            "Set to 1 for reading from memory
+WR              pin;            "Set to 1 for writing to memory
 
 " Program Access Unit
 PAUSel2			pin;	"highest bit of Program Address Unit control
@@ -93,6 +101,10 @@ DAUSXSel1       pin;    "DAU low bit of Accumulator, S, X, 0 selector
 DAUXUpdateSel   pin;    "DAU selects whether we are changing X
 DAUSUpdateSel   pin;    "DAU selects whether we are changing X
 
+" Other outputs
+RD			pin;	"output  read signal for the Data data bus
+WR			pin;	"output  write signal for the Data data bus
+
 
 " Intermediate values
 FI  node;		"Holds Global Interrupt Enable/Disable flag
@@ -114,13 +126,15 @@ JmpCase3  node;		"Holds conditions fulfilled by JB/JC, JE/JZ, JG, JU
 
 IR = [IR15..IR0];				"Program Data Bus
 Flags = [Flags7..Flags0];		"Flags
-
+DataOffset = [IR7..IR0];        "Offset
+JMPOffset = [IR12..IR0];        "Jump Offset
 
 
 EQUATIONS
 
 " At the press of Clock, the clock will cycle
 IR.CLK = Clock;
+IR.CLR = Reset;
 
 " Flags set
 FI = Flags7;		"Holds Global Interrupt Enable/Disable flag
