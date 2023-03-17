@@ -93,6 +93,9 @@ DAUSXSel1       pin;    "DAU low bit of Accumulator, S, X, 0 selector
 DAUXUpdateSel   pin;    "DAU selects whether we are changing X
 DAUSUpdateSel   pin;    "DAU selects whether we are changing X
 
+"Read/Write condition
+RD          pin;    "output  read signal for the Data data bus
+WR          pin;    "output  write signal for the Data data bus
 
 " Intermediate values
 FI  node;       "Holds Global Interrupt Enable/Disable flag
@@ -114,6 +117,7 @@ JmpCase3  node;     "Holds conditions fulfilled by JB/JC, JE/JZ, JG, JU
 
 IR = [IR15..IR0];               "Program Data Bus
 Flags = [Flags7..Flags0];       "Flags
+
 
 
 
@@ -139,6 +143,19 @@ JmpCase2 = (!FC # !FZ # ((FS $ FV) # FZ) # !FU);    "conditions fulfilled by JAE
 JmpCase3 = (FC # FZ # (!(FS $ FV) & !FZ) # FU);     "conditions fulfilled by JB/JC, JE/JZ, JG, JU
 
 
+"RD condition
+RD = (!IR15 & !(IR9 & IR8)) #    "RD=1 when not direct addressing for ALU ops (9,8=11 for direct)
+     !(!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #   "RD=0 for INC
+     !(!IR15 & IR14 & !IR13 & IR12) #         "RD=0 for LSL, RLC
+     !(!IR15 & !IR14 & IR13 & !IR12 & IR11)#  "RD=0 for NOT
+     (IR15 & !IR14 & !IR13);    "RD=1 for LD, LDI, LDD
+
+"WR condition 1 only when store instruction
+WR = (IR15 & !IR14 & IR13);     "ST and STD
+
+
+
+
 " Program Access Unit control signal calculation
 " For all instructions except jumps, true condition jumps, CALL, RTS PAUSel2,1,0 will be 000
 
@@ -161,8 +178,7 @@ PAUSel0 = (IR15 & IR11 & !IR10 & !IR9 & !IR8 & JmpCase0) #  "JA, JNS, JNV, JL
           (IR15 & IR11 & IR10 & IR9 & IR8 & JmpCase3);      "JB/JC, JE/JZ, JG, JU
 
 "Load must be set to 1 for direct jump (JMP)
-PAULoad = (IR15 & IR14 & !IR13) #       "JMP
-          (IR15 & IR14 & !IR13);        "JMP
+PAULoad = (IR15 & IR14 & !IR13);        "JMP
 
 
 
