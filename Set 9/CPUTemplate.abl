@@ -86,7 +86,7 @@ DataAccess INTERFACE  (Accum7..Accum0, Offset7..Offset0,
                        -> DataAddr7..DataAddr0, XReg7..XReg0, SReg7..SReg0);
 
 CU INTERFACE  (IR15..IR0, Flags7..Flags0, Reset, Clock
-               -> PAUSel2, PAUSel1, PAUSel0, PAULoad,
+               -> RD, WR, PAUSel2, PAUSel1, PAUSel0, PAULoad,
                ALUSel21, ALUSel20, ALUSel19, ALUSel18, ALUSel17, ALUSel16,
                ALUCarryIn1, ALUCarryIn0, ALUSubtrSel, ALUAccumSel, 
                ALUFreezeAccum, ALULoadFlags, ALUChangeSZ, ALUChangeCV,
@@ -171,8 +171,8 @@ ALUnit.ChangeCV  = CUnit.ALUChangeCV;
 
 "ALU outputs:
 "TODO: Do I set it to an internal bus or directly to other units?
-[AccumAddr7..AccumAddr0]  =  ALUnit.[Accum7..Accum0];   "Used by DAU and DataDB
-[Flags7..Flags0]          =  ALUnit.[Flags7..Flags0];   "Used by DataDB
+[AccumAddr7..AccumAddr0] = ALUnit.[Accum7..Accum0];   "Used by DAU and DataDB
+[Flags7..Flags0] = ALUnit.[Flags7..Flags0];   "Used by DataDB
 
 
 
