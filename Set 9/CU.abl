@@ -48,6 +48,7 @@ TITLE      'Control Unit'
 " Revision History:
 " 2023-03-11   Kemal Pulungan  Initial code
 " 2023-03-16   Kemal Pulungan  F block completed, along with everything else
+" 2023-03-17   Kemal Pulungan  Added ALU instruction affects to DAU controls
 
 
 " Pin/Signal Declarations
@@ -117,7 +118,7 @@ JmpCase3  node;     "Holds conditions fulfilled by JB/JC, JE/JZ, JG, JU
 
 IR = [IR15..IR0];               "Program Data Bus
 Flags = [Flags7..Flags0];       "Flags
-
+TODO: write bus for lower 8 and lower 12
 
 
 
