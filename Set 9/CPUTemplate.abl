@@ -84,9 +84,10 @@ DataAccess INTERFACE  (Accum7..Accum0, Offset7..Offset0,
                        SXSel2, SXSel1, XUpdateSel, SUpdateSel, 
                        Reset, Clock
                        -> DataAddr7..DataAddr0, XReg7..XReg0, SReg7..SReg0);
-
+"TODO: Add in CPU mux commands
 CU INTERFACE  (IR15..IR0, Flags7..Flags0, Reset, Clock
-               -> PAUSel2, PAUSel1, PAUSel0, PAULoad,
+               -> DataOffset7..DataOffset0, JMPOffset12..JMPOffset0, RD, WR, 
+               PAUSel2, PAUSel1, PAUSel0, PAULoad,
                ALUSel21, ALUSel20, ALUSel19, ALUSel18, ALUSel17, ALUSel16,
                ALUCarryIn1, ALUCarryIn0, ALUSubtrSel, ALUAccumSel, 
                ALUFreezeAccum, ALULoadFlags, ALUChangeSZ, ALUChangeCV,
@@ -115,6 +116,17 @@ DataOff = [DataOff7..DataOff0];     "8-bit internal mux for input to ALU
 
 EQUATIONS
 "TODO: Figure out how reset and clock affect things
+
+"Read and Write signals
+RD = CUnit.RD;
+WR = CUnit.WR;
+
+
+"Data Bus Mux
+"Between Accumulator, Flags, PC[7..0] and PC[12..8]
+DataDB = (ALUnit.[Accum7..Accum] & WR) #    "Whenever store command
+         ()
+
 
 "Program Memory Access Unit inputs:
 PAUnit.[OffsetMuxIn7..OffsetMuxIn0]   =  [DataAB7..DataAB0];
@@ -169,7 +181,7 @@ ALUnit.ChangeCV  = CUnit.ALUChangeCV;
 "ALU outputs:
 "TODO: Do I set it to an internal bus or directly to other units?
 [AccumAddr7..AccumAddr0] = ALUnit.[Accum7..Accum0];   "Used by DAU and DataDB
-[Flags7..Flags0] = ALUnit.[Flags7..Flags0];           "Used by DataDB
+[Flags7..Flags0] = ALUnit.[Flags7..Flags0];   "Used by DataDB
 
 
 

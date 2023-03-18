@@ -2,7 +2,7 @@ MODULE CU
 TITLE      'Control Unit'
 
 " Description:  This file demonstrates a bus-based control unit. 
-"				This is Kemal Pulungan's submission for EE10a Set 9
+"               This is Kemal Pulungan's submission for EE10a Set 9
 "
 " Inputs:       IR[15..0]   - Instruction Bus
 "               Flags[7..0] - Flags from ALU
@@ -26,7 +26,7 @@ TITLE      'Control Unit'
 "               ALUCarryIn0        - ALU selector bit 0 for carry in control
 "               ALUSubtrSel        - ALU for subtracting (high) or not (low)
 "               ALUAccumSel        - ALU selector whether shift/rotate or adder is accumulator
-"               ALUFreezeAccum	   - ALU freezes accumulator
+"               ALUFreezeAccum     - ALU freezes accumulator
 "               ALULoadFlags       - ALU Selector for POPF (directly loading flags)
 "               ALUChangeSZ        - ALU Selector for whether operation changes Zero and Sign
 "               ALUChangeCV        - ALU Selector for whether operation changes Carry and Overflow
@@ -46,21 +46,25 @@ TITLE      'Control Unit'
 "
 "               DataOffset[7..0]       - Lower 8 bits of Instruction Register (for general offset)
 "               JMPOffset[12..0]   - Lower 12 bits of Instruction Register (for jumps)
+"               RD      - Read signal
+"               WR      - Write signal
+"               IO      - Input/Output signal
 
 
 " Revision History:
 " 2023-03-11   Kemal Pulungan  Initial code
 " 2023-03-16   Kemal Pulungan  F block completed, along with everything else
+" 2023-03-17   Kemal Pulungan  Added ALU instruction affects to DAU controls
 
 
 " Pin/Signal Declarations
 
 " Inputs
 
-IR15..IR0			pin ISTYPE 'REG, KEEP';		"instruction
-Flags7..Flags0		pin;
-Reset 				pin;		"reset
-Clock 				pin;		"clock cycle
+ProgramDB15..ProgramDB0  pin;     "instruction input by program data
+Flags7..Flags0      pin;        "Flags
+Reset               pin;        "reset
+Clock               pin;        "clock cycle
 
 
 " Outputs
@@ -71,7 +75,7 @@ RD              pin;            "Set to 1 for reading from memory
 WR              pin;            "Set to 1 for writing to memory
 
 " Program Access Unit
-PAUSel2			pin;	"highest bit of Program Address Unit control
+PAUSel2         pin;    "highest bit of Program Address Unit control
 PAUSel1         pin;    "middle bit of Program Address Unit control
 PAUSel0         pin;    "lowest bit of Program Address Unit control
 PAULoad         pin;    "load condition of Program Address Unit
@@ -87,7 +91,7 @@ ALUCarryIn1     pin;    "ALU selector bit 1 for carry in control
 ALUCarryIn0     pin;    "ALU selector bit 0 for carry in control
 ALUSubtrSel     pin;    "ALU for subtracting (high) or not (low)
 ALUAccumSel     pin;    "ALU selector whether shift/rotate or adder is accumulator
-ALUFreezeAccum	pin;    "ALU freezes accumulator
+ALUFreezeAccum  pin;    "ALU freezes accumulator
 ALULoadFlags    pin;    "ALU Selector for POPF (directly loading flags)
 ALUChangeSZ     pin;    "ALU Selector for whether operation changes Zero and Sign
 ALUChangeCV     pin;    "ALU Selector for whether operation changes Carry and Overflow
@@ -101,82 +105,128 @@ DAUSXSel1       pin;    "DAU low bit of Accumulator, S, X, 0 selector
 DAUXUpdateSel   pin;    "DAU selects whether we are changing X
 DAUSUpdateSel   pin;    "DAU selects whether we are changing X
 
-" Other outputs
-RD			pin;	"output  read signal for the Data data bus
-WR			pin;	"output  write signal for the Data data bus
+" Read/Write condition
+RD          pin;    "output  read signal for the Data data bus
+WR          pin;    "output  write signal for the Data data bus
 
+" Controls for CPU muxes
+"DataDB
+"00 for ST/STI/STD, 01 for PUSHF, 10 for lower 8, 11 for upper 5 (CALL)
+DDBMux1   pin;
+DDBMux0   pin;
+
+"ALU Data
+"0 for X+o, S+o, or (m), 1 for immediate addressing 
+ALUMux    pin;
+
+"PAU Data
+"0 for RTS (from DDB), 1 for offset
+PAUMux    pin;
+
+
+"Offset and direct Jump address
+DataOffset7..DataOffset0    pin;      "Lower 8 bits for regular data offset
+JMPOffset12..JMPOffset0     pin;      "Lower 12 bits for direct address jumps
 
 " Intermediate values
-FI  node;		"Holds Global Interrupt Enable/Disable flag
-F6  node;		"Holds 6th bit of Flag register
-FU  node;		"Holds user bit used by STU and CLU instructions flag
-F4  node;		"Holds 4th bit of Flag register
-FC  node;		"Holds Carry (carry out of bit 7) flag
-FV  node;		"Holds Signed Overflow flag
-FS  node;		"Holds Sign flag
-FZ  node;		"Holds Zero flag
+IR15..IR0   node ISTYPE 'REG, KEEP';    "Instruction Register
+FI  node;       "Holds Global Interrupt Enable/Disable flag
+F6  node;       "Holds 6th bit of Flag register
+FU  node;       "Holds user bit used by STU and CLU instructions flag
+F4  node;       "Holds 4th bit of Flag register
+FC  node;       "Holds Carry (carry out of bit 7) flag
+FV  node;       "Holds Signed Overflow flag
+FS  node;       "Holds Sign flag
+FZ  node;       "Holds Zero flag
 
-JmpCase0  node;		"Holds conditions fulfilled by JA, JNS, JNV, JL
-JmpCase1  node;		"Holds conditions fulfilled by JBE, JS, JV, JGE
-JmpCase2  node;		"Holds conditions fulfilled by JAE/JNC, JNE/JNZ, JLE, JNU
-JmpCase3  node;		"Holds conditions fulfilled by JB/JC, JE/JZ, JG, JU
+JmpCase0  node;     "Holds conditions fulfilled by JA, JNS, JNV, JL
+JmpCase1  node;     "Holds conditions fulfilled by JBE, JS, JV, JGE
+JmpCase2  node;     "Holds conditions fulfilled by JAE/JNC, JNE/JNZ, JLE, JNU
+JmpCase3  node;     "Holds conditions fulfilled by JB/JC, JE/JZ, JG, JU
 
 
 " Busses/Vectors
+ProgramDB = [ProgramDB15..ProgramDB0];    "Program Data Bus
+IR = [IR15..IR0];               "Instruction Register Bus
+Flags = [Flags7..Flags0];       "Flags
 
-IR = [IR15..IR0];				"Program Data Bus
-Flags = [Flags7..Flags0];		"Flags
-DataOffset = [IR7..IR0];        "Offset
-JMPOffset = [IR12..IR0];        "Jump Offset
+" Offsets for data and direct jumps
+DataOffset = [DataOffset7..DataOffset0];        "Lower 8 bits for regular data offset
+JMPOffset = [JMPOffset12..JMPOffset0];          "Lower 12 bits for direct address jumps
 
 
 EQUATIONS
+
+" IR = ProgramDB
+IR := ProgramDB;
+
+DataOffset = [IR7..IR0];        "Lower 8 bits for regular data offset
+JMPOffset = [IR12..IR0];        "Lower 12 bits for direct address jumps
 
 " At the press of Clock, the clock will cycle
 IR.CLK = Clock;
 IR.CLR = Reset;
 
 " Flags set
-FI = Flags7;		"Holds Global Interrupt Enable/Disable flag
-F6 = Flags6;		"Holds 6th bit of Flag register
-FU = Flags5;		"Holds user bit used by STU and CLU instructions flag
-F4 = Flags4;		"Holds 4th bit of Flag register
-FC = Flags3;		"Holds Carry (carry out of bit 7) flag
-FV = Flags2;		"Holds Signed Overflow flag
-FS = Flags1;		"Holds Sign flag
-FZ = Flags0;		"Holds Zero flag
+FI = Flags7;        "Holds Global Interrupt Enable/Disable flag
+F6 = Flags6;        "Holds 6th bit of Flag register
+FU = Flags5;        "Holds user bit used by STU and CLU instructions flag
+F4 = Flags4;        "Holds 4th bit of Flag register
+FC = Flags3;        "Holds Carry (carry out of bit 7) flag
+FV = Flags2;        "Holds Signed Overflow flag
+FS = Flags1;        "Holds Sign flag
+FZ = Flags0;        "Holds Zero flag
+
+"DataDB Mux condition
+DDBMux1 = (IR15 & IR14 & IR13);    "1 for CALL
+DDBMux0 = (!IR15 & !IR14 & !IR13 & !IR12 & IR11 & IR10 & IR9 & !IR8);     "1 for PUSHF
+                                                                          "what about upper 5?
 
 "Jump Condition calculations
-JmpCase0 = ((!FC & !FZ) # !FS # !FV # (FS $ FV));	"conditions fulfilled by JA, JNS, JNV, JL
-JmpCase1 = ((FC # FZ) # FS # FV # !(FS $ FV));		"conditions fulfilled by JBE, JS, JV, JGE
-JmpCase2 = (!FC # !FZ # ((FS $ FV) # FZ) # !FU);	"conditions fulfilled by JAE/JNC, JNE/JNZ, JLE, JNU
-JmpCase3 = (FC # FZ # (!(FS $ FV) & !FZ) # FU);		"conditions fulfilled by JB/JC, JE/JZ, JG, JU
+JmpCase0 = ((!FC & !FZ) # !FS # !FV # (FS $ FV));   "conditions fulfilled by JA, JNS, JNV, JL
+JmpCase1 = ((FC # FZ) # FS # FV # !(FS $ FV));      "conditions fulfilled by JBE, JS, JV, JGE
+JmpCase2 = (!FC # !FZ # ((FS $ FV) # FZ) # !FU);    "conditions fulfilled by JAE/JNC, JNE/JNZ, JLE, JNU
+JmpCase3 = (FC # FZ # (!(FS $ FV) & !FZ) # FU);     "conditions fulfilled by JB/JC, JE/JZ, JG, JU
+
+
+"RD condition
+RD = (!IR15 & !(IR9 & IR8)) #    "RD=1 when not direct addressing for ALU ops (9,8=11 for direct)
+     !(!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #   "RD=0 for INC
+     !(!IR15 & IR14 & !IR13 & IR12) #         "RD=0 for LSL, RLC
+     !(!IR15 & !IR14 & IR13 & !IR12 & IR11)#  "RD=0 for NOT
+     (IR15 & !IR14 & !IR13) #    "RD=1 for LD, LDI, LDD
+     (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8);      "POPF
+
+"WR condition 1 only when store instruction or PUSHF
+WR = (IR15 & !IR14 & IR13) #     "ST and STD
+     (!IR15 & !IR14 & !IR13 & !IR12 & IR11 & IR10 & IR9 & !IR8);      "PUSHF
+
+
 
 
 " Program Access Unit control signal calculation
 " For all instructions except jumps, true condition jumps, CALL, RTS PAUSel2,1,0 will be 000
 
 "only 1 if CALL or RTS
-PAUSel2 = (IR15 & IR14 & IR13) #		"CALL
-          (!IR15 & !IR14 & !IR13 & IR12 & IR11 & IR10 & IR9 & !IR8);	"RTS
+PAUSel2 = (IR15 & IR14 & IR13) #        "CALL
+          (!IR15 & !IR14 & !IR13 & IR12 & IR11 & IR10 & IR9 & !IR8);    "RTS
 
 "JMP and jump conditions being met makes PAUSel1 1
-PAUSel1 = (IR15 & IR11 & !IR10 & !IR9 & !IR8 & JmpCase0) #	"JA, JNS, JNV, JL
+PAUSel1 = (IR15 & IR11 & !IR10 & !IR9 & !IR8 & JmpCase0) #  "JA, JNS, JNV, JL
           (IR15 & IR11 & !IR10 & IR9 & IR8 & JmpCase1) #      "JBE, JS, JV, JGE
           (IR15 & IR11 & IR10 & !IR9 & !IR8 & JmpCase2) #     "JAE/JNC, JNE/JNZ, JLE, JNU
-          (IR15 & IR11 & IR10 & IR9 & IR8 & JmpCase3) #		"JB/JC, JE/JZ, JG, JU
-          (IR15 & IR14 & !IR13 & !IR12) #	"JMP
-          (IR15 & IR14 & !IR13 & IR12);		"JMP
+          (IR15 & IR11 & IR10 & IR9 & IR8 & JmpCase3) #     "JB/JC, JE/JZ, JG, JU
+          (IR15 & IR14 & !IR13 & !IR12) #   "JMP
+          (IR15 & IR14 & !IR13 & IR12);     "JMP
 
 "With set 9, PAUSel0 turns 1 with any offset jumps
-PAUSel0 = (IR15 & IR11 & !IR10 & !IR9 & !IR8 & JmpCase0) #	"JA, JNS, JNV, JL
-          (IR15 & IR11 & !IR10 & IR9 & IR8 & JmpCase1) #		"JBE, JS, JV, JGE
-          (IR15 & IR11 & IR10 & !IR9 & !IR8 & JmpCase2) #		"JAE/JNC, JNE/JNZ, JLE, JNU
-          (IR15 & IR11 & IR10 & IR9 & IR8 & JmpCase3);		"JB/JC, JE/JZ, JG, JU
+PAUSel0 = (IR15 & IR11 & !IR10 & !IR9 & !IR8 & JmpCase0) #  "JA, JNS, JNV, JL
+          (IR15 & IR11 & !IR10 & IR9 & IR8 & JmpCase1) #        "JBE, JS, JV, JGE
+          (IR15 & IR11 & IR10 & !IR9 & !IR8 & JmpCase2) #       "JAE/JNC, JNE/JNZ, JLE, JNU
+          (IR15 & IR11 & IR10 & IR9 & IR8 & JmpCase3);      "JB/JC, JE/JZ, JG, JU
 
 "Load must be set to 1 for direct jump (JMP)
-PAULoad = (IR15 & IR14 & !IR13) #		"JMP
-          (IR15 & IR14 & !IR13);		"JMP
+PAULoad = (IR15 & IR14 & !IR13);        "JMP
 
 
 
@@ -185,17 +235,17 @@ PAULoad = (IR15 & IR14 & !IR13) #		"JMP
 " F Block
 "ALU F Block bit 3 follows instruction bit 14 except loading
 ALUSel19 = (!IR15 & IR14) #   "Anything not loading
-           (IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #	  "LDI
+           (IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #   "LDI
            (IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8);  "LDD
 
 "ALU F Block bit 2 follows instruction bit 12, and when loading bit 2 is 0
 ALUSel18 = (!IR15 & IR12) #   "Anything not loading
-          !(IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #	  "LDI
+          !(IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #   "LDI
           !(IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8);  "LDD
 
 "ALU F Block bit 1 follows instruction bit 13, except loading (1) and CMP (0)
 ALUSel17 = (!IR15 & IR13) #   "Anything not loading
-           (IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #	  "LDI
+           (IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #   "LDI
            (IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) # "LDD
           !(!IR15 & !IR14 & IR13 & IR12 & !IR10);  "CMP
 
@@ -209,7 +259,7 @@ ALUSel16 = (!IR15 & !IR14 & !IR13 & IR12) #        "SUB/SBB
 "ALU Carry bit 1
 ALUCarryIn1 = (!IR15 & IR14 & IR13 & !IR12 & !IR11) #   "ADC
               (!IR15 & !IR14 & !IR13 & IR12 & IT11) #   "SBB
-              (!IR15 & !IR14 & IR13 & !IR12 & IR11 & IR10 & !IR9 & IR8) #	"NOT
+              (!IR15 & !IR14 & IR13 & !IR12 & IR11 & IR10 & !IR9 & IR8) #   "NOT
               (!IR15 & IR14 & !IR13 & IR12 & !IR11);    "RLC
 
 "ALU Carry bit 0
@@ -219,31 +269,31 @@ ALUCarryIn0 = (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #   
 
 
 " only turned 0 by LSL, RLC, POPF
-ALUAccumSel = !((!IR15 & IR14 & !IR13 & IR12) #		"LSL, RLC
-                (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8));	"POPF
+ALUAccumSel = !((!IR15 & IR14 & !IR13 & IR12) #     "LSL, RLC
+                (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8));  "POPF
 
 
 " Selects whether to carry in
 " only turned 1 by INC and DEC
-ALUSel21 = (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) # 	"INC
-           (!IR15 & IR14 & IR13 & IR12 & IR11 & !IR10 & IR9 & IR8); 		"DEC
+ALUSel21 = (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #  "INC
+           (!IR15 & IR14 & IR13 & IR12 & IR11 & !IR10 & IR9 & IR8);         "DEC
 
 
 " Selects whether to pass Accumulator or 0 to Adder
 ALUSel20 = (!IR15 & IR14 & IR13 & !IR12) #   "ADD/ADC
            (!IR15 & !IR14 & !IR13 & IR12) #   "SUB/SBB
            (!IR15 & IR14 & IR13 & IR12 & IR11) #   "DEC
-           (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) # 	"INC
+           (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #  "INC
            (!IR15 & !IR14 & IR13 & IR12 & !IR10);  "CMP
 
 
 " only set to 0 by NOT, XOR, AND, OR, TST, POPF
-ALUChangeCV = !((!IR15 & !IR14 & IR13 & !IR12 & IR11 & IR10 & !IR9 & IR8) #		"NOT
-                (!IR15 & !IR14 & IR13 & IR12 & !IR11 & IR10) # 		"XOR
-                (!IR15 & IR14 & !IR13 & !IR12 & !IR11 & IR10) #		"AND
-                (!IR15 & IR14 & IR13 & IR12 & !IR11 & IR10) #		"OR
-                (!IR15 & IR14 & !IR13 & !IR12 & IR11 & IR10) #		"TST
-                (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8));	"POPF
+ALUChangeCV = !((!IR15 & !IR14 & IR13 & !IR12 & IR11 & IR10 & !IR9 & IR8) #     "NOT
+                (!IR15 & !IR14 & IR13 & IR12 & !IR11 & IR10) #      "XOR
+                (!IR15 & IR14 & !IR13 & !IR12 & !IR11 & IR10) #     "AND
+                (!IR15 & IR14 & IR13 & IR12 & !IR11 & IR10) #       "OR
+                (!IR15 & IR14 & !IR13 & !IR12 & IR11 & IR10) #      "TST
+                (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8));  "POPF
 
 
 " always 1 except load
@@ -257,13 +307,13 @@ ALUSubtrSel = (!IR15 & !IR14 & !IR13 & IR12) #   "SUB/SBB
 
 
 " only turned 1 by CMP, TST, POPF
-ALUFreezeAccum = (!IR15 & !IR14 & IR13 & IR12 & !IR11 & !IR10) # 	"CMP
-                 (!IR15 & IR14 & !IR13 & !IR12 & IR11 & IR10) #		"TST
-                 (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8);	"POPF
+ALUFreezeAccum = (!IR15 & !IR14 & IR13 & IR12 & !IR11 & !IR10) #    "CMP
+                 (!IR15 & IR14 & !IR13 & !IR12 & IR11 & IR10) #     "TST
+                 (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8);  "POPF
 
 
 " Enable POPF to happen
-ALULoadFlags = (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8);	"POPF
+ALULoadFlags = (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8);    "POPF
 
 
 
@@ -274,10 +324,12 @@ DAUIncBySel = (IR15 & IR9 & !IR8) #   "1 whenever Load/Store offset operation
                                       "(15 is 1, 9 is 1) and bit 8 is 0
              !(IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #   "0 for LDD
              !(IR15 & !IR14 & !IR13 & !IR12 & IR11 & !IR10 & !IR9 & IR8) #   "0 for LDI
-             !(IR15 & !IR14 & IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8);   "0 for STD
+             !(IR15 & !IR14 & IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #  "0 for STD
+             !(!IR15);  "0 for any ALU operations
 
 "1 when pre-increment
-DAUPrePostSel = (IR15 & !IR12 & IR9);   "1 whenever Load/Store operation and bit 12 is 0
+DAUPrePostSel = (IR15 & !IR12 & IR9) #   "1 whenever Load/Store operation and bit 12 is 0
+                (!IR15);    "1 for ALU operations
 
 "1 when decrementing (bit 11 is 1, bit 9 is 1)
 DAUIncDecSel = (IR15 & IR11 & IR9);
@@ -288,15 +340,18 @@ DAUAddendSel = !(IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #  
                !(IR15 & !IR14 & IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8);   "0 for STD
 
 "1 whenever S is selected
-DAUSXSel2 = (IR15 & !IR10 & IR9);
+DAUSXSel2 = (IR15 & !IR10 & IR9) #      "store/load
+            (!IR15 & !(!IR14 & !IR13 & !IR12) & IR9 & !IR8);  "any ALU ops with S will have 
+                                                    "IR15=0 while IR14 thru 12 cannot be 0
 
 "1 whenever X is selected
-DAUSXSel1 = (IR15 & IR10 & IR9);
+DAUSXSel1 = (IR15 & IR10 & IR9) #      "store/load
+            (!IR15 & !IR9 & IR8);  "any ALU ops with X will have IR15=0, IR9=0, IR8=1
 
-"1 whenever X is selected
+"1 whenever X is selected and store/load with inc/decrement
 XUpdateSel = (IR15 & IR10 & IR9);
 
-"1 whenever S is selected
+"1 whenever S is selected and store/load with inc/decrement
 SUpdateSel = (IR15 & !IR10 & IR9);
 
 
