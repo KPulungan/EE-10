@@ -55,8 +55,8 @@ TITLE      'Control Unit'
 
 " Inputs
 
-IR15..IR0           pin ISTYPE 'REG, KEEP';     "instruction
-Flags7..Flags0      pin;
+ProgramDB15..ProgramDB0  pin;     "instruction input by program data
+Flags7..Flags0      pin;        "Flags
 Reset               pin;        "reset
 Clock               pin;        "clock cycle
 
@@ -94,11 +94,31 @@ DAUSXSel1       pin;    "DAU low bit of Accumulator, S, X, 0 selector
 DAUXUpdateSel   pin;    "DAU selects whether we are changing X
 DAUSUpdateSel   pin;    "DAU selects whether we are changing X
 
-"Read/Write condition
+" Read/Write condition
 RD          pin;    "output  read signal for the Data data bus
 WR          pin;    "output  write signal for the Data data bus
 
+" Controls for CPU muxes
+"DataDB
+"00 for ST/STI/STD, 01 for PUSHF, 10 for lower 8, 11 for upper 5 (CALL)
+DDBMux1   pin;
+DDBMux0   pin;
+
+"ALU Data
+"0 for X+o, S+o, or (m), 1 for immediate addressing 
+ALUMux    pin;
+
+"PAU Data
+"0 for RTS (from DDB), 1 for offset
+PAUMux    pin;
+
+
+"Offset and direct Jump address
+DataOffset7..DataOffset0    pin;      "Lower 8 bits for regular data offset
+JMPOffset12..JMPOffset0     pin;      "Lower 12 bits for direct address jumps
+
 " Intermediate values
+IR15..IR0   node ISTYPE 'REG, KEEP';    "Instruction Register
 FI  node;       "Holds Global Interrupt Enable/Disable flag
 F6  node;       "Holds 6th bit of Flag register
 FU  node;       "Holds user bit used by STU and CLU instructions flag
@@ -115,17 +135,26 @@ JmpCase3  node;     "Holds conditions fulfilled by JB/JC, JE/JZ, JG, JU
 
 
 " Busses/Vectors
-
-IR = [IR15..IR0];               "Program Data Bus
+ProgramDB = [ProgramDB15..ProgramDB0];    "Program Data Bus
+IR = [IR15..IR0];               "Instruction Register Bus
 Flags = [Flags7..Flags0];       "Flags
-TODO: write bus for lower 8 and lower 12
 
+" Offsets for data and direct jumps
+DataOffset = [DataOffset7..DataOffset0];        "Lower 8 bits for regular data offset
+JMPOffset = [JMPOffset12..JMPOffset0];          "Lower 12 bits for direct address jumps
 
 
 EQUATIONS
 
+" IR = ProgramDB
+IR := ProgramDB;
+
+DataOffset = [IR7..IR0];        "Lower 8 bits for regular data offset
+JMPOffset = [IR12..IR0];        "Lower 12 bits for direct address jumps
+
 " At the press of Clock, the clock will cycle
 IR.CLK = Clock;
+IR.CLS = Reset;
 
 " Flags set
 FI = Flags7;        "Holds Global Interrupt Enable/Disable flag
@@ -136,6 +165,11 @@ FC = Flags3;        "Holds Carry (carry out of bit 7) flag
 FV = Flags2;        "Holds Signed Overflow flag
 FS = Flags1;        "Holds Sign flag
 FZ = Flags0;        "Holds Zero flag
+
+"DataDB Mux condition
+DDBMux1 = (IR15 & IR14 & IR13);    "1 for CALL
+DDBMux0 = (!IR15 & !IR14 & !IR13 & !IR12 & IR11 & IR10 & IR9 & !IR8);     "1 for PUSHF
+                                                                          "what about upper 5?
 
 "Jump Condition calculations
 JmpCase0 = ((!FC & !FZ) # !FS # !FV # (FS $ FV));   "conditions fulfilled by JA, JNS, JNV, JL
@@ -149,10 +183,12 @@ RD = (!IR15 & !(IR9 & IR8)) #    "RD=1 when not direct addressing for ALU ops (9
      !(!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & !IR9 & !IR8) #   "RD=0 for INC
      !(!IR15 & IR14 & !IR13 & IR12) #         "RD=0 for LSL, RLC
      !(!IR15 & !IR14 & IR13 & !IR12 & IR11)#  "RD=0 for NOT
-     (IR15 & !IR14 & !IR13);    "RD=1 for LD, LDI, LDD
+     (IR15 & !IR14 & !IR13) #    "RD=1 for LD, LDI, LDD
+     (!IR15 & !IR14 & !IR13 & !IR12 & !IR11 & !IR10 & IR9 & !IR8);      "POPF
 
-"WR condition 1 only when store instruction
-WR = (IR15 & !IR14 & IR13);     "ST and STD
+"WR condition 1 only when store instruction or PUSHF
+WR = (IR15 & !IR14 & IR13) #     "ST and STD
+     (!IR15 & !IR14 & !IR13 & !IR12 & IR11 & IR10 & IR9 & !IR8);      "PUSHF
 
 
 
