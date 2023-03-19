@@ -27,7 +27,9 @@ TITLE      'Caltech10 CPU'
 " Revision History:
 " 02/15/18   Glen George  Initial Revision
 " 01/05/21   Glen George  Updated comments
-
+" 03/12/23   Kemal Pulungan  Added control signals from control unit and to other units
+" 03/15/23   Kemal Pulungan  Added multiplexer logic
+" 03/18/23   Kemal Pulungan  Full multiplexer logic
 
 
 " Pin/Signal Declarations
@@ -85,8 +87,9 @@ DataAccess INTERFACE  (Accum7..Accum0, Offset7..Offset0,
                        Reset, Clock
                        -> DataAddr7..DataAddr0, XReg7..XReg0, SReg7..SReg0);
 "TODO: Add in CPU mux commands
-CU INTERFACE  (IR15..IR0, Flags7..Flags0, Reset, Clock
-               -> DataOffset7..DataOffset0, JMPOffset12..JMPOffset0, RD, WR, 
+CU INTERFACE  (ProgramDB15..ProgramDB0, Flags7..Flags0, Reset, Clock
+               -> DataOffset7..DataOffset0, JMP12..JMP0, RD, WR, 
+               DDBMux1, DDBMux0, ALUMux, PAUMux, 
                PAUSel2, PAUSel1, PAUSel0, PAULoad,
                ALUSel21, ALUSel20, ALUSel19, ALUSel18, ALUSel17, ALUSel16,
                ALUCarryIn1, ALUCarryIn0, ALUSubtrSel, ALUAccumSel, 
@@ -115,7 +118,6 @@ DataOff = [DataOff7..DataOff0];     "8-bit internal mux for input to ALU
 
 
 EQUATIONS
-"TODO: Figure out how reset and clock affect things
 
 "Read and Write signals
 RD = CUnit.RD;
@@ -124,13 +126,21 @@ WR = CUnit.WR;
 
 "Data Bus Mux
 "Between Accumulator, Flags, PC[7..0] and PC[12..8]
-DataDB = (ALUnit.[Accum7..Accum] & WR) #    "Whenever store command
-         ()
+"00 for ST/STI/STD, 01 for PUSHF, 10 for lower 8, 11 for upper 5 (CALL)
+DataDB = (ALUnit.[Accum7..Accum] & !CUnit.DDBMux1 & !CUnit.DDBMux0) #    "Whenever store command
+         (ALUnit.[Flags7..Flags0] & !CUnit.DDBMux1 & CUnit.DDBMux0) #    "PUSHF
+         (PAUnit.[AddressBus7..AddressBus0] & CUnit.DDBMux1 & !CUnit.DDBMux0) #    "CALL Lower 8
+         (PAUnit.[AddressBus12..AddressBus8] & CUnit.DDBMux1 & CUnit.DDBMux0) #    "CALL Upper 5
 
 
 "Program Memory Access Unit inputs:
-PAUnit.[OffsetMuxIn7..OffsetMuxIn0]   =  [DataAB7..DataAB0];
-PAUnit.[DirectJMPMuxIn12..DirectJMPMuxIn0]  =  [ProgramAB12..ProgramAB0];
+PAUnit.[OffsetMuxIn7..OffsetMuxIn0]   =  CUnit.[DataOffset7..DataOffset0];
+PAUnit.[DirectJMPMuxIn12..DirectJMPMuxIn0]  =  CUnit.[JMP12..JMP0];
+
+"PAU mux
+"0  for offset, 1 for RTS (from DDB)
+PAUnit.[OffsetMuxIn7..OffsetMuxIn0] = (CUnit.[DataOffset7..DataOffset0] & !CUnit.PAUMux) #
+                                      (DataDB & CUnit.PAUMux);
 
 "Program Memory Access Unit control signals:
 PAUnit.Reset  =  !Reset;
@@ -143,23 +153,19 @@ PAUnit.Load = CUnit.PAULoad;
 
 
 "Arithmetic Logic Unit
-ALU.Clock = Clock;
-ALU.Reset = Reset;
+ALUnit.Clock = Clock;
+ALUnit.Reset = !Reset;
 
 "Input Data Mux
-"Selects between DataDB, Instruction Register, 
-"X, S occur simultaneous with some instructions
-"TODO: Figure out what happens with X+o or S+o
-DataOff = (DataDB & ?) #    "Data Data Bus
-          ();
+"Selects between DataDB (X+o, or S+o, or (m)), or Instruction Register
+"0 for X+o, S+o, or (m), 1 for immediate addressing 
+DataOff = (DataDB & !CUnit.ALUMux) #    "Data Data Buss
+          (CUnit.[DataOffset7..DataOffset0] & CUnit.ALUMux);
 
 "Arithmetic Logic Unit inputs:
-ALUnit.[Data7..Data0]  =  [DataOff7..DataOff0];
+ALUnit.[Data7..Data0]  =  CUnit.[DataOffset7..DataOffset0];
 
 "ALU control signal inputs:
-"TODO: figure out reset and clock
-ALUnit.Reset  =  CUnit.
-ALUnit.Clock  =  CUnit.
 
 ALUnit.Sel21  =  CUnit.ALUSel21;
 ALUnit.Sel20  =  CUnit.ALUSel20;
@@ -187,9 +193,11 @@ ALUnit.ChangeCV  = CUnit.ALUChangeCV;
 
 "Data Access Unit
 "Inputs
-"TODO: Do I set it to an internal bus or directly to other units?
-DAUnit.[Accum7..Accum0] = ALUnit.[Accum7..Accum0];
-DAUnit.[Offset7..Offset0] = ;
+"Accumulator to DAU is only extra credit
+DAUnit.Reset = !Reset;
+ALUnit.Clock = Clock;
+
+DAUnit.[Offset7..Offset0] = CUnit.[DataOffset7..DataOffset0];
 
 "DAU Control inputs:
 DAUnit.PrePostSel = CUnit.DAUPrePostSel;
@@ -209,7 +217,7 @@ DAUnit.SUpdateSel = CUnit.DAUSUpdateSel;
 
 
 "Control Unit input:
-CUnit.[IR15..IR0] := [ProgramDB15..ProgramDB0];
+CUnit.[ProgramDB15..ProgramDB0] = [ProgramDB15..ProgramDB0];
 
 "Control Unit control signals:
 CUnit.Reset = Reset;
@@ -217,10 +225,6 @@ CUnit.Clock = Clock;
 
 
 
-"Data Bus Mux
-"Between Accumulator, Flags, PC[7..0] and PC[12..8]
-"TODO what is PC fork? What determines which is selected?
-DataDB = 
 
 
 " output enables

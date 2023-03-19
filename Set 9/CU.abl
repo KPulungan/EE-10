@@ -45,16 +45,19 @@ TITLE      'Control Unit'
 "               IO		- Input/Output signal
 "
 "               DataOffset[7..0]       - Lower 8 bits of Instruction Register (for general offset)
-"               JMPOffset[12..0]   - Lower 12 bits of Instruction Register (for jumps)
-"               RD      - Read signal
-"               WR      - Write signal
-"               IO      - Input/Output signal
+"               JMP[12..0]   - Lower 12 bits of Instruction Register (for jumps)
+"               
+"               DDBMux1       - Data Data Bus multiplexer control signal bit 1
+"               DDBMux0       - Data Data Bus multiplexer control signal bit 0
+"               ALUMux        - ALU input multiplexer control signal
+"               PAUMux        - PAU input multiplexer control signal
 
 
 " Revision History:
 " 2023-03-11   Kemal Pulungan  Initial code
 " 2023-03-16   Kemal Pulungan  F block completed, along with everything else
 " 2023-03-17   Kemal Pulungan  Added ALU instruction affects to DAU controls
+" 2023-03-18   Kemal Pulungan  Changed direct jump name
 
 
 " Pin/Signal Declarations
@@ -70,7 +73,7 @@ Clock               pin;        "clock cycle
 " Outputs
 "General:
 DataOffset7..DataOffset0 pin;   "Lower 8 bits of Instruction Register (for general offset)
-JMPOffset12..JMPOffset0 pin;    "Lower 12 bits of Instruction Register (for jumps)
+JMP12..JMP0 pin;    "Lower 12 bits of Instruction Register (for jumps)
 RD              pin;            "Set to 1 for reading from memory
 WR              pin;            "Set to 1 for writing to memory
 
@@ -120,13 +123,13 @@ DDBMux0   pin;
 ALUMux    pin;
 
 "PAU Data
-"0 for RTS (from DDB), 1 for offset
+"0  for offset, 1 for RTS (from DDB)
 PAUMux    pin;
 
 
 "Offset and direct Jump address
 DataOffset7..DataOffset0    pin;      "Lower 8 bits for regular data offset
-JMPOffset12..JMPOffset0     pin;      "Lower 12 bits for direct address jumps
+JMP12..JMP0     pin;      "Lower 12 bits for direct address jumps
 
 " Intermediate values
 IR15..IR0   node ISTYPE 'REG, KEEP';    "Instruction Register
@@ -152,7 +155,7 @@ Flags = [Flags7..Flags0];       "Flags
 
 " Offsets for data and direct jumps
 DataOffset = [DataOffset7..DataOffset0];        "Lower 8 bits for regular data offset
-JMPOffset = [JMPOffset12..JMPOffset0];          "Lower 12 bits for direct address jumps
+JMP = [JMP12..JMP0];          "Lower 12 bits for direct address jumps
 
 
 EQUATIONS
@@ -161,7 +164,7 @@ EQUATIONS
 IR := ProgramDB;
 
 DataOffset = [IR7..IR0];        "Lower 8 bits for regular data offset
-JMPOffset = [IR12..IR0];        "Lower 12 bits for direct address jumps
+JMP = [IR12..IR0];        "Lower 12 bits for direct address jumps
 
 " At the press of Clock, the clock will cycle
 IR.CLK = Clock;
@@ -181,6 +184,15 @@ FZ = Flags0;        "Holds Zero flag
 DDBMux1 = (IR15 & IR14 & IR13);    "1 for CALL
 DDBMux0 = (!IR15 & !IR14 & !IR13 & !IR12 & IR11 & IR10 & IR9 & !IR8);     "1 for PUSHF
                                                                           "what about upper 5?
+
+"ALUMux
+"0 for X+o, S+o, or (m), 1 for immediate addressing 
+ALUMux = (!IR15 & IR9 & IR8);        "1 when direct addressing for ALU ops (9,8=11 for direct)
+
+"PAUMux
+"0  for offset, 1 for RTS (from DDB)
+PAUMux = (!IR15 & !IR14 & !IR13 & IR12 & IR11 & IR10 & IR9 & !IR8);    "RTS
+
 
 "Jump Condition calculations
 JmpCase0 = ((!FC & !FZ) # !FS # !FV # (FS $ FV));   "conditions fulfilled by JA, JNS, JNV, JL
