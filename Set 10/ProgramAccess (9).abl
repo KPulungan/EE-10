@@ -1,0 +1,125 @@
+MODULE      ProgramAccess
+TITLE      'Program Memory Address Unit'
+
+
+" Description:  This file demonstrates a bus-based program memory address unit. 
+"								This is Kemal Pulungan's submission for EE10a Set 6
+"
+" Inputs:       IncrPCMuxIn[12..0]  - 13-bit multiplexer input for incrementing the PC +1.
+"									  Set to constant of 1
+"               HoldPCMuxIn[12..0]  - 13-bit multiplexer input for holding the current PC
+"									  Set to constant of 0
+"               DirectJMPMuxIn[12..0]  - 13-bit multiplexer input for directly 
+"									   jumping to an address in the program
+"               OffsetMuxIn[7..0]  - 8-bit input for adding an offset to the current
+"									 PC value to jump to. To be converted to 13 bits
+"				PC						- 13-bit program counter
+"				Sel2		  		- highest bit of select input
+"               Sel1          - second bit of select input
+"               Sel0          - low bit of select input
+"               Load          - tells whether to load PC to accumulator 
+"                               (low for enable, high for disable)
+"                               Used for direct jump
+"				Reset					- resets values
+"				Clock					- cycles clock
+"
+" Outputs:      Mux1Out[12..0] - output of multiplexer
+"				AdderOut[12..0] - output of adder
+"				Carry[13..0]		- carry for each bit
+
+
+" Revision History:
+" 02/17/23	 Kemal Pulungan  Added code about multiplexer
+" 02/18/23	 Kemal Pulungan	 Added adder code
+" 02/18/23   Kemal Pulungan  Fixed clock update
+" 02/20/23   Kemal Pulungan  Updated Load control documentation
+
+
+
+" Pin/Signal Declarations
+
+" Inputs
+
+DirectJMPMuxIn12..DirectJMPMuxIn0       pin;    "input for PC directly jumping to value to mux
+OffsetMuxIn7..OffsetMuxIn0							pin;		"input for PC offset for jumping to mux
+
+Sel2                    pin;    "input  highest bit of mux select
+Sel1                    pin;    "input  2nd bit of mux select
+Sel0                    pin;    "input  lowest bit of mux select
+Load                    pin;    "tells whether to load PC value to adder or not. For direct jump
+
+Reset			pin;		"input system reset
+Clock			pin;		"input system clock
+
+" Outputs
+AddressBus12..AddressBus0	pin;
+PC12..PC0		pin ISTYPE 'REG, KEEP';		"program counter
+
+
+" Constants
+
+ONE   =  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1 ];    " 13-bit value of 1
+ZERO  =  [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];    " 13-bit value of all 0's
+
+
+
+" Intermediate Terms
+" CarryOuti is meant for storing a sum that cannot fully fit into the i-th bit
+CarryOut13..CarryOut0			     node;		 "carry out of 14 bits
+CarryIn12..CarryIn0					 node;
+Mux1Out12..Mux1Out0      pin;    "output  the 13-bit output of mux
+AdderOut12..AdderOut0		 pin;		 "output of the adder
+
+
+" Busses/Vectors
+
+Mux1Out  =  [Mux1Out12..Mux1Out0];       " multiplexer output
+IncrPCMuxIn   =  ONE;         " input PC increment to mux
+HoldPCMuxIn   =  ZERO;         " input PC hold to mux
+DirectJMPMuxIn   =   [DirectJMPMuxIn12..DirectJMPMuxIn0];     " input PC direct jump to mux
+OffsetMuxIn   =   [ OffsetMuxIn7, OffsetMuxIn7, OffsetMuxIn7, OffsetMuxIn7, 
+                    OffsetMuxIn7, OffsetMuxIn7..OffsetMuxIn0];     " input PC offset jump to mux
+High5MuxIn   =  [OffsetMuxIn4..OffsetMuxIn0, 0, 0, 0, 0, 0, 0, 0, 0]; " input loading highest 5 bits to mux
+Low8MuxIn   =  [ 0, 0, 0, 0, 0, OffsetMuxIn7..OffsetMuxIn0];         " input loading lowest 8 bits to mux
+AdderOut  =  [AdderOut12..AdderOut0];		 " adder output
+CarryOut = [CarryIn12..CarryIn0, 0];		 " carry values bits 14 to 0
+PC = [PC12..PC0];
+AddressBus = [AddressBus12..AddressBus0];
+
+
+
+EQUATIONS
+
+" At the press of Clock, the clock will cycle
+" When Reset and Clock are pressed together, the PC value will reset
+
+PC.CLK = Clock;
+PC.CLR = Reset;
+
+
+" mux
+
+" When selecting DirectJMPMuxIn, you *MUST* also flip Load 
+" to high to stop the direct jump value from being added to the PC
+
+" When selecting Low8MuxIn, you *MUST* set load to high in order not to add to the current PC value
+
+" Everything else, load is set to low, in order to add to PC value
+
+Mux1Out  =  (IncrPCMuxIn & !Sel2 & !Sel1 & !Sel0) #     " Sel = 000 -> PC increment +1
+            (HoldPCMuxIn & !Sel2 & !Sel1 & Sel0) #      " Sel = 001 -> Hold PC
+            (DirectJMPMuxIn & !Sel2 & Sel1 & !Sel0) #   " Sel = 010 -> Direct jump, Load must be high
+            (OffsetMuxIn & !Sel2 & Sel1 & Sel0) #   	" Sel = 011 -> Offset jump
+            (High5MuxIn & Sel2 & !Sel1 & !Sel0) #       " Sel = 100 -> Highest 5
+            (Low8MuxIn & Sel2 & !Sel1 & Sel0);          " Sel = 101 -> Lowest 8, Load must be high
+
+" adder
+
+AdderOut = (PC & !Load) $ Mux1Out $ CarryOut[12..0];
+CarryOut[13..1] = ((PC & !Load) & Mux1Out) # (CarryOut[12..0] & ((PC & !Load) $ Mux1Out));
+
+PC := AdderOut;
+
+AddressBus = PC;
+
+END     ProgramAccess
